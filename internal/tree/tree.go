@@ -1,0 +1,98 @@
+// Package tree locates and reads a spectre tree. The tree is the only
+// state: nothing here caches, indexes or writes sidecar files.
+package tree
+
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+// ErrNoRoot reports that no spectre/ directory was found.
+var ErrNoRoot = errors.New("no spectre/ directory found")
+
+// Tree is a resolved spectre tree.
+type Tree struct {
+	Root string // absolute path of the spectre/ directory
+}
+
+// Find walks up from start looking for a spectre/ directory.
+func Find(start string) (*Tree, error) {
+	dir, err := filepath.Abs(start)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		cand := filepath.Join(dir, "spectre")
+		if fi, err := os.Stat(cand); err == nil && fi.IsDir() {
+			return &Tree{Root: cand}, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return nil, fmt.Errorf("%w (searched upwards from %s)", ErrNoRoot, start)
+		}
+		dir = parent
+	}
+}
+
+// Open uses an explicit root, which may be the tree directory itself or
+// its parent.
+func Open(root string) (*Tree, error) {
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
+	}
+	if filepath.Base(abs) != "spectre" {
+		abs = filepath.Join(abs, "spectre")
+	}
+	fi, err := os.Stat(abs)
+	if err != nil || !fi.IsDir() {
+		return nil, fmt.Errorf("%w at %s", ErrNoRoot, abs)
+	}
+	return &Tree{Root: abs}, nil
+}
+
+// SpecsDir, ChangesDir and ArchiveDir are the tree's fixed subdirectories.
+func (t *Tree) SpecsDir() string   { return filepath.Join(t.Root, "specs") }
+func (t *Tree) ChangesDir() string { return filepath.Join(t.Root, "changes") }
+func (t *Tree) ArchiveDir() string { return filepath.Join(t.Root, "changes", "archive") }
+
+// Peers reads the peers file: "<name> <relative-path>" lines, blank lines
+// and # comments ignored. An absent file is not an error.
+func (t *Tree) Peers() (map[string]string, error) {
+	f, err := os.Open(filepath.Join(t.Root, "peers"))
+	if errors.Is(err, os.ErrNotExist) {
+		return map[string]string{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	out := map[string]string{}
+	sc := bufio.NewScanner(f)
+	line := 0
+	for sc.Scan() {
+		line++
+		t2 := strings.TrimSpace(sc.Text())
+		if t2 == "" || strings.HasPrefix(t2, "#") {
+			continue
+		}
+		fields := strings.Fields(t2)
+		if len(fields) != 2 {
+			return nil, fmt.Errorf("peers:%d: want \"<name> <path>\", got %q", line, t2)
+		}
+		p := fields[1]
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(filepath.Dir(t.Root), p)
+		}
+		if filepath.Base(p) != "spectre" {
+			p = filepath.Join(p, "spectre")
+		}
+		out[fields[0]] = filepath.Clean(p)
+	}
+	return out, sc.Err()
+}
