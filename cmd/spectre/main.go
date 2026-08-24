@@ -36,6 +36,8 @@ func main() {
 		os.Exit(cmd.List(args, os.Stdout, os.Stderr))
 	case "validate":
 		os.Exit(cmd.Validate(args, os.Stdout, os.Stderr))
+	case "refs":
+		os.Exit(cmd.Refs(args, os.Stdout, os.Stderr))
 	case "-h", "--help", "help":
 		fmt.Fprint(os.Stdout, usage)
 		os.Exit(cmd.OK)
