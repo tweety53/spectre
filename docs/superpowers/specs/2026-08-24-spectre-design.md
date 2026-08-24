@@ -83,6 +83,7 @@ does the work; none exists today.
 ```
 spectre/
   peers                       # "<name> <relative-path>" lines, one per neighbour tree
+  config.md                   # optional; rules, vocabulary and layout for this tree
   specs/<capability>.md       # flat file per capability; capability name = filename
   changes/<id>/proposal.md
              /tasks.md
@@ -93,9 +94,10 @@ spectre/
 Specs are flat files rather than `<capability>/spec.md` directories: one less level for the same
 content.
 
-`peers` is the only file spectre reads that is neither a spec nor a change. It carries the single
-fact a tree cannot derive about itself — where its neighbours sit. Paths are relative, so the file
-survives cloning, moving and git worktrees.
+`peers` and `config.md` are the only files spectre reads that are neither a spec nor a change.
+`peers` carries the single fact a tree cannot derive about itself — where its neighbours sit.
+Paths are relative, so the file survives cloning, moving and git worktrees. `config.md` is
+described in full under **Per-repository configuration** below.
 
 A name repeated in `peers` is an error naming both lines, on the same reasoning as `config.md`'s
 closed keys: silently taking the last line would resolve citations against a tree the author did not
@@ -217,7 +219,7 @@ prefix — the obvious reading — silently drops every cross-prefix citation be
 | `spectre new <id>` | Scaffolds `changes/<id>/` with proposal and tasks templates. Exits 1 if it already exists. |
 | `spectre list` | Open changes with `3/7` progress. `--specs` lists capabilities with requirement counts. `--json` for machine consumption. |
 | `spectre validate [id]` | No argument validates the whole tree. |
-| `spectre archive <id>` | Asserts every task is checked, then `git mv`s the folder under `changes/archive/`. `--force` overrides the assertion. Does not commit. |
+| `spectre archive <id>` | Refuses three content problems — unchecked tasks, a missing `tasks.md`, and a `tasks.md` with no tasks at all — then `git mv`s the folder under `changes/archive/`. `--force` overrides all three. A fourth refusal, the destination already existing under `changes/archive/`, is never overridden by `--force`. Does not commit. |
 | `spectre refs <capability>#<id>` | Prints every citation of a requirement, scanning this tree and each declared peer, and prints which trees it scanned. |
 | `spectre migrate [--out <dir>] [--force] <openspec-dir>` | Optional. Converts an existing OpenSpec tree into a spectre tree, written to `--out` (default `./spectre` in the working directory). Never required by any other command. Does not accept `--root`: it takes a source path and `--out` instead of resolving an existing tree. |
 
