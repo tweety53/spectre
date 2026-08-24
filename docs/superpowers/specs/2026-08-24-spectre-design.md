@@ -45,14 +45,18 @@ it reports is recomputed from markdown on each invocation.
 | Task progress (`3/7`) | count of `- [x]` vs `- [ ]` lines in `tasks.md` |
 | Capability list | filenames in `specs/` |
 | Requirement ids | `R<n>:` bullets parsed from a spec file |
-| Which specs a change touches | `git diff --name-only <base>...HEAD -- spectre/specs/` |
+| Which specs a change touches | not implemented — no command computes this today |
 
-That last row is the one a stored model would have held as an `## Impact` field the author has to
-keep truthful. Git already knows which files a branch changed, so spectre asks git.
+That last row names a fact no command computes. The intent was to derive it from git
+(`git diff --name-only <base>...HEAD -- spectre/specs/`) rather than store it as an `## Impact`
+field the author has to keep truthful, but that query was never built; `archive`'s `git mv` is the
+only git invocation spectre currently makes.
 
 Consequences worth stating:
 
-- No config to resolve, therefore no precedence rules and no per-project drift.
+- Configuration lives in one place per tree — `spectre/config.md`, read once per invocation and
+  never written by spectre itself — so there is exactly one precedence path (that file, or the
+  compiled default when it is absent) and no per-project drift beyond the file's own git history.
 - No shared mutable state, therefore no locks and no transactions. Two agents in two worktrees
   cannot corrupt each other.
 - `git mv`, `rm -rf` and hand-editing in an editor are all legal spectre operations. The tool is
@@ -69,9 +73,10 @@ Consequences worth stating:
 Every mutation parses the file into the Go model, changes the model, and renders the file from
 the model. No command string-appends into a markdown file.
 
-This makes malformed output unrepresentable, gives the renderer sole ownership of task numbering
-and bullet shape, and yields `spectre fmt` — normalise a hand-edited file by round-tripping it —
-for no extra machinery.
+This makes malformed output unrepresentable and gives the renderer sole ownership of task numbering
+and bullet shape. A normalising `fmt` command — round-tripping a hand-edited file through parse and
+render — would need no extra machinery if one is ever added, since parse → model → render already
+does the work; none exists today.
 
 ## Layout
 
@@ -214,7 +219,7 @@ prefix — the obvious reading — silently drops every cross-prefix citation be
 | `spectre validate [id]` | No argument validates the whole tree. |
 | `spectre archive <id>` | Asserts every task is checked, then `git mv`s the folder under `changes/archive/`. `--force` overrides the assertion. Does not commit. |
 | `spectre refs <capability>#<id>` | Prints every citation of a requirement, scanning this tree and each declared peer, and prints which trees it scanned. |
-| `spectre migrate <openspec-dir>` | Optional. Converts an existing OpenSpec tree into a spectre tree. Never required by any other command. |
+| `spectre migrate [--out <dir>] [--force] <openspec-dir>` | Optional. Converts an existing OpenSpec tree into a spectre tree, written to `--out` (default `./spectre` in the working directory). Never required by any other command. Does not accept `--root`: it takes a source path and `--out` instead of resolving an existing tree. |
 
 A peer that cannot be read is skipped and marked in the `scanned:` line — `<name> (unreadable: <err>)`
 beside `<name> (not present)` — and `refs` still exits 0. A neighbour's broken tree bounds the
@@ -230,12 +235,13 @@ it.
 
 ## Migration from OpenSpec
 
-`spectre migrate <openspec-dir>` exists so an OpenSpec tree can be adopted, but nothing in spectre
-depends on it: a tree created by `spectre new` is indistinguishable from a migrated one, and the
-command is never invoked by another command.
+`spectre migrate [--out <dir>] [--force] <openspec-dir>` exists so an OpenSpec tree can be
+adopted, but nothing in spectre depends on it: a tree created by `spectre new` is indistinguishable
+from a migrated one, and the command is never invoked by another command.
 
-It is **non-destructive**. It writes a new `spectre/` tree and never modifies or deletes the
-`openspec/` tree it reads. Re-running it on an existing target fails unless `--force` is given.
+It is **non-destructive**. It writes a new `spectre/` tree at `--out` (default `./spectre` in the
+working directory) and never modifies or deletes the `openspec/` tree it reads. Re-running it on an
+existing target fails unless `--force` is given.
 
 Conversions:
 
@@ -269,6 +275,17 @@ otherwise a user could fix every reported warning and still hold a tree `validat
 clears `specs/` and `changes/` in the target before writing, and nothing else, so a re-migration
 cannot leave files from a source that has since changed.
 
+**A migrated tree requires a per-requirement hand pass before it validates.** OpenSpec states a
+requirement's normative sentence in the requirement body; spectre's `shall-clause` rule requires it
+on the bullet itself. A straightforward conversion of a real corpus therefore fails `shall-clause`
+for nearly every requirement — 249 of 278 warnings measured on one real tree are exactly this
+conversion artefact. The rule stays strict rather than treating the body as satisfying it: a
+requirement's normative sentence belongs on its own line, and a "has no SHALL clause" that Notes
+could silently satisfy would hollow the rule out for every future edit, not only migrated ones.
+Instead, whenever `migrate` emits more than one no-`SHALL`-clause finding, its report adds one
+explanatory line naming the count and stating why, so the user moves each requirement's modal
+sentence onto its bullet by hand rather than discovering the pattern one warning at a time.
+
 ## Validation rules and exit codes
 
 Findings print as `file:line: message`. Exit 0 clean, 1 findings, 2 usage or IO error.
@@ -298,18 +315,26 @@ internal/tree/        root resolution, peers, reading changes and specs
 internal/parse/       markdown to model
 internal/render/      model to markdown
 internal/check/       validation rules, pure functions over the model
+internal/config/      spectre/config.md — rules, vocabulary and layout for one tree
+internal/model/       the shared types every other package passes around
 internal/cmd/         new.go list.go validate.go archive.go refs.go migrate.go
 internal/openspec/    the OpenSpec reader, used only by migrate
+internal/testtree/    fixture-tree builder shared by other packages' tests
 ```
 
 ## Testing
 
-Table-driven tests per command over fixture trees copied into `t.TempDir()`, with golden files for
-`list`, `validate` and `refs` output. Cross-tree cases build two sibling trees in the temporary
-directory with a real relative `peers` file — the filesystem is not faked. `archive` shells out to
-`git mv`, so its test runs in a real temporary repository. `migrate` is tested against a fixture
-copied from a real OpenSpec tree, with golden output covering a converted spec, a preserved
-scenario block, flattened task numbering, and the delta-spec warning path with its exit 1.
+Every package tests itself directly against fixture trees built under `t.TempDir()` — no golden
+files and no `testdata/` directory. Most tests are individually named `TestXxx` functions that
+assert on parsed output, rendered bytes, or a command's exit code and stdout/stderr for one
+scenario; table-driven tests (`t.Run` subtests) are used where a package tests many small input
+variants, such as `internal/config`'s rejected-setting cases and `internal/cmd/new`'s invalid-id
+cases. `internal/testtree` builds a shared two-tree fixture layout for cross-tree cases — `refs`
+and peer resolution — with a real relative `peers` file; the filesystem is not faked. `archive`
+shells out to `git mv`, so its tests run inside a real temporary git repository. `migrate` is
+tested against a small OpenSpec tree built inline per test, not a copy of a real corpus, covering a
+converted spec, a preserved scenario block, flattened task numbering, and the delta-spec warning
+path with its exit 1.
 
 ## Measurements
 
