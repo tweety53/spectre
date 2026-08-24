@@ -30,7 +30,7 @@ func Refs(args []string, stdout, stderr io.Writer) int {
 	targetRe := regexp.MustCompile(`^([a-z0-9][a-z0-9-]*)#(` + regexp.QuoteMeta(t.Cfg.IDPrefix) + `\d+)$`)
 	m := targetRe.FindStringSubmatch(fs.Arg(0))
 	if fs.NArg() != 1 || m == nil {
-		fmt.Fprintln(stderr, "usage: spectre refs <capability>#<id>")
+		fmt.Fprintf(stderr, "usage: spectre refs <capability>#<id> (this tree's ids start with %q)\n", t.Cfg.IDPrefix)
 		return Usage
 	}
 	capName, reqID := m[1], m[2]

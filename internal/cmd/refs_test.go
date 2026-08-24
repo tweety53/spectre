@@ -126,6 +126,35 @@ func TestRefsPeerUnreadablePath(t *testing.T) {
 	}
 }
 
+// TestRefsHonorsConfiguredIDPrefix pins the behaviour this task actually
+// added to cmd.Refs: the <capability>#<id> argument pattern is built from
+// the resolved tree's own configured id prefix, not a hardcoded "R\d+".
+func TestRefsHonorsConfiguredIDPrefix(t *testing.T) {
+	base := testtree.Build(t, t.TempDir(), "app", map[string]string{
+		"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- REQ-1: The system SHALL a.\n- REQ-2: The system SHALL b (@auth#REQ-1).\n",
+	}, "")
+	if err := os.WriteFile(filepath.Join(base, "spectre", "config.md"), []byte("## Vocabulary\n- id-prefix: REQ-\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out, errBuf bytes.Buffer
+	if code := Refs([]string{"--root", base, "auth#REQ-1"}, &out, &errBuf); code != OK {
+		t.Fatalf("exit = %d, stderr = %s", code, errBuf.String())
+	}
+	if !strings.Contains(out.String(), "specs/auth.md:8: REQ-2 cites @auth#REQ-1") {
+		t.Errorf("missing citation in:\n%s", out.String())
+	}
+
+	out.Reset()
+	errBuf.Reset()
+	if code := Refs([]string{"--root", base, "auth#R1"}, &out, &errBuf); code != Usage {
+		t.Fatalf("exit = %d, want %d (R1 does not match this tree's REQ- prefix)", code, Usage)
+	}
+	if !strings.Contains(errBuf.String(), `"REQ-"`) {
+		t.Errorf("stderr = %q, want it to name the configured prefix", errBuf.String())
+	}
+}
+
 func TestRefsPeerUnreadableSpec(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores file permissions")
