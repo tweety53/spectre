@@ -21,40 +21,22 @@ func msgs(fs []Finding) string {
 
 func TestSpecFindingsClean(t *testing.T) {
 	raw := []byte("# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a.\n")
-	s := model.Spec{Capability: "auth", Purpose: "P.", Reqs: []model.Requirement{
+	s := model.Spec{Capability: "auth", Purpose: "P.", Raw: raw, Reqs: []model.Requirement{
 		{ID: "R1", Num: 1, Text: "The system SHALL a.", Line: 7},
 	}}
-	if got := SpecFindings("specs/auth.md", s, raw); len(got) != 0 {
+	if got := SpecFindings("specs/auth.md", s); len(got) != 0 {
 		t.Errorf("want clean, got:\n%s", msgs(got))
-	}
-}
-
-func TestSpecFindingsMissingHeading(t *testing.T) {
-	raw := []byte("# auth\n\n## Requirements\n- R1: The system SHALL a.\n")
-	s := model.Spec{Capability: "auth", Reqs: []model.Requirement{{ID: "R1", Num: 1, Text: "The system SHALL a.", Line: 4}}}
-	got := msgs(SpecFindings("specs/auth.md", s, raw))
-	if !strings.Contains(got, "missing \"## Purpose\"") {
-		t.Errorf("got:\n%s", got)
-	}
-}
-
-func TestSpecFindingsPlaceholder(t *testing.T) {
-	raw := []byte("# auth\n\n## Purpose\nTBD\n\n## Requirements\n- R1: The system SHALL a.\n")
-	s := model.Spec{Capability: "auth", Purpose: "TBD", Reqs: []model.Requirement{{ID: "R1", Num: 1, Text: "The system SHALL a.", Line: 7}}}
-	got := msgs(SpecFindings("specs/auth.md", s, raw))
-	if !strings.Contains(got, "specs/auth.md:4: placeholder \"TBD\"") {
-		t.Errorf("got:\n%s", got)
 	}
 }
 
 func TestSpecFindingsRequirementRules(t *testing.T) {
 	raw := []byte("# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: no modal verb here.\n- R1: The system SHALL b.\n- R5: The system SHALL c.\n")
-	s := model.Spec{Capability: "auth", Purpose: "P.", Reqs: []model.Requirement{
+	s := model.Spec{Capability: "auth", Purpose: "P.", Raw: raw, Reqs: []model.Requirement{
 		{ID: "R1", Num: 1, Text: "no modal verb here.", Line: 7},
 		{ID: "R1", Num: 1, Text: "The system SHALL b.", Line: 8},
 		{ID: "R5", Num: 5, Text: "The system SHALL c.", Line: 9},
 	}}
-	got := msgs(SpecFindings("specs/auth.md", s, raw))
+	got := msgs(SpecFindings("specs/auth.md", s))
 	for _, want := range []string{
 		"specs/auth.md:7: requirement R1 has no SHALL clause",
 		"specs/auth.md:8: duplicate requirement id R1",
@@ -66,39 +48,66 @@ func TestSpecFindingsRequirementRules(t *testing.T) {
 	}
 }
 
-func TestSpecFindingsMalformedBullet(t *testing.T) {
-	raw := []byte("# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1 The system SHALL a.\n")
-	s := model.Spec{Capability: "auth", Purpose: "P."}
-	got := msgs(SpecFindings("specs/auth.md", s, raw))
-	if !strings.Contains(got, "specs/auth.md:7: malformed requirement bullet") {
-		t.Errorf("got:\n%s", got)
+func TestSpecFindingsTable(t *testing.T) {
+	tests := []struct {
+		name         string
+		raw          string
+		reqs         []model.Requirement
+		wantContains []string
+		wantAbsent   []string
+	}{
+		{
+			name: "missing heading",
+			raw:  "# auth\n\n## Requirements\n- R1: The system SHALL a.\n",
+			reqs: []model.Requirement{{ID: "R1", Num: 1, Text: "The system SHALL a.", Line: 4}},
+			wantContains: []string{
+				"missing \"## Purpose\"",
+			},
+		},
+		{
+			name:         "placeholder",
+			raw:          "# auth\n\n## Purpose\nTBD\n\n## Requirements\n- R1: The system SHALL a.\n",
+			reqs:         []model.Requirement{{ID: "R1", Num: 1, Text: "The system SHALL a.", Line: 7}},
+			wantContains: []string{"specs/auth.md:4: placeholder \"TBD\""},
+		},
+		{
+			name:         "malformed bullet",
+			raw:          "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1 The system SHALL a.\n",
+			wantContains: []string{"specs/auth.md:7: malformed requirement bullet"},
+		},
+		{
+			name:         "heading in fence not recognized",
+			raw:          "# auth\n\n```\n## Purpose\n```\n\n## Requirements\n- R1: The system SHALL a.\n",
+			reqs:         []model.Requirement{{ID: "R1", Num: 1, Text: "The system SHALL a.", Line: 8}},
+			wantContains: []string{"missing \"## Purpose\""},
+		},
+		{
+			name:       "heading as file's last line, no trailing newline",
+			raw:        "# auth\n\n## Purpose\nP.\n\n## Requirements",
+			wantAbsent: []string{"missing \"## Requirements\""},
+		},
+		{
+			name:       "malformed bullet in fence ignored",
+			raw:        "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a.\n\n```\n- R1 no colon\n```\n",
+			reqs:       []model.Requirement{{ID: "R1", Num: 1, Text: "The system SHALL a.", Line: 7}},
+			wantAbsent: []string{"malformed requirement bullet"},
+		},
 	}
-}
-
-func TestSpecFindingsHeadingInFence(t *testing.T) {
-	raw := []byte("# auth\n\n```\n## Purpose\n```\n\n## Requirements\n- R1: The system SHALL a.\n")
-	s := model.Spec{Capability: "auth", Reqs: []model.Requirement{{ID: "R1", Num: 1, Text: "The system SHALL a.", Line: 8}}}
-	got := msgs(SpecFindings("specs/auth.md", s, raw))
-	if !strings.Contains(got, "missing \"## Purpose\"") {
-		t.Errorf("got:\n%s", got)
-	}
-}
-
-func TestSpecFindingsHeadingLastLineNoNewline(t *testing.T) {
-	raw := []byte("# auth\n\n## Purpose\nP.\n\n## Requirements")
-	s := model.Spec{Capability: "auth", Purpose: "P."}
-	got := msgs(SpecFindings("specs/auth.md", s, raw))
-	if strings.Contains(got, "missing \"## Requirements\"") {
-		t.Errorf("got:\n%s", got)
-	}
-}
-
-func TestSpecFindingsMalformedBulletInFenceIgnored(t *testing.T) {
-	raw := []byte("# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a.\n\n```\n- R1 no colon\n```\n")
-	s := model.Spec{Capability: "auth", Purpose: "P.", Reqs: []model.Requirement{{ID: "R1", Num: 1, Text: "The system SHALL a.", Line: 7}}}
-	got := msgs(SpecFindings("specs/auth.md", s, raw))
-	if strings.Contains(got, "malformed requirement bullet") {
-		t.Errorf("got:\n%s", got)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := model.Spec{Capability: "auth", Raw: []byte(tt.raw), Reqs: tt.reqs}
+			got := msgs(SpecFindings("specs/auth.md", s))
+			for _, want := range tt.wantContains {
+				if !strings.Contains(got, want) {
+					t.Errorf("missing %q in:\n%s", want, got)
+				}
+			}
+			for _, absent := range tt.wantAbsent {
+				if strings.Contains(got, absent) {
+					t.Errorf("unwanted %q in:\n%s", absent, got)
+				}
+			}
+		})
 	}
 }
 

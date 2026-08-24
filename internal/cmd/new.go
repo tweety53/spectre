@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/tweety53/spectre/internal/render"
+	"github.com/tweety53/spectre/internal/tree"
 )
 
 const proposalTemplate = `# %s
@@ -55,8 +56,8 @@ func New(args []string, stdout, stderr io.Writer) int {
 	}
 
 	files := map[string][]byte{
-		"proposal.md": []byte(fmt.Sprintf(proposalTemplate, id)),
-		"tasks.md":    render.Tasks(nil),
+		tree.ProposalFile: []byte(fmt.Sprintf(proposalTemplate, id)),
+		tree.TasksFile:    render.Tasks(nil),
 	}
 	for name, body := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), body, 0o644); err != nil {

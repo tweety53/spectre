@@ -34,7 +34,7 @@ var (
 // parser cannot read as requirements, which would otherwise vanish silently.
 // Fenced code blocks are skipped, so an example bullet inside a ``` fence
 // is not mistaken for a malformed requirement.
-func malformedReqFindings(rel string, raw []byte) []Finding {
+func malformedReqFindings(relPath string, raw []byte) []Finding {
 	var out []Finding
 	inReqs := false
 	inFence := false
@@ -51,7 +51,7 @@ func malformedReqFindings(rel string, raw []byte) []Finding {
 			continue
 		}
 		if inReqs && strings.HasPrefix(line, "- ") && !wellFormedReq.MatchString(line) {
-			out = append(out, Finding{File: rel, Line: i + 1, Msg: "malformed requirement bullet, want \"- R<n>: ... SHALL ...\""})
+			out = append(out, Finding{File: relPath, Line: i + 1, Msg: "malformed requirement bullet, want \"- R<n>: ... SHALL ...\""})
 		}
 	}
 	return out
@@ -62,7 +62,7 @@ func malformedReqFindings(rel string, raw []byte) []Finding {
 // matching) means a heading that is the file's last line, with no trailing
 // newline, is still recognized, and a heading that appears only inside a
 // ``` fence or as quoted example text is not.
-func headingFindings(rel string, raw []byte, want []string) []Finding {
+func headingFindings(relPath string, raw []byte, want []string) []Finding {
 	present := map[string]bool{}
 	inFence := false
 	for _, line := range strings.Split(string(raw), "\n") {
@@ -78,39 +78,40 @@ func headingFindings(rel string, raw []byte, want []string) []Finding {
 	var out []Finding
 	for _, h := range want {
 		if !present[h] {
-			out = append(out, Finding{File: rel, Line: 1, Msg: fmt.Sprintf("missing %q", h)})
+			out = append(out, Finding{File: relPath, Line: 1, Msg: fmt.Sprintf("missing %q", h)})
 		}
 	}
 	return out
 }
 
-func placeholderFindings(rel string, raw []byte) []Finding {
+func placeholderFindings(relPath string, raw []byte) []Finding {
 	var out []Finding
 	for i, line := range strings.Split(string(raw), "\n") {
 		for _, p := range placeholders {
 			if strings.Contains(line, p) {
-				out = append(out, Finding{File: rel, Line: i + 1, Msg: fmt.Sprintf("placeholder %q", p)})
+				out = append(out, Finding{File: relPath, Line: i + 1, Msg: fmt.Sprintf("placeholder %q", p)})
 			}
 		}
 	}
 	return out
 }
 
-// SpecFindings applies every spec rule to one capability file.
-func SpecFindings(rel string, s model.Spec, raw []byte) []Finding {
-	out := headingFindings(rel, raw, []string{"# " + s.Capability, "## Purpose", "## Requirements"})
-	out = append(out, placeholderFindings(rel, raw)...)
-	out = append(out, malformedReqFindings(rel, raw)...)
+// SpecFindings applies every spec rule to one capability file. s.Raw
+// supplies the pre-parse text the regex-based checks need.
+func SpecFindings(relPath string, s model.Spec) []Finding {
+	out := headingFindings(relPath, s.Raw, []string{"# " + s.Capability, "## Purpose", "## Requirements"})
+	out = append(out, placeholderFindings(relPath, s.Raw)...)
+	out = append(out, malformedReqFindings(relPath, s.Raw)...)
 
 	seen := map[string]bool{}
 	for i, r := range s.Reqs {
 		if !strings.Contains(r.Text, " SHALL ") {
-			out = append(out, Finding{File: rel, Line: r.Line, Msg: fmt.Sprintf("requirement %s has no SHALL clause", r.ID)})
+			out = append(out, Finding{File: relPath, Line: r.Line, Msg: fmt.Sprintf("requirement %s has no SHALL clause", r.ID)})
 		}
 		if seen[r.ID] {
-			out = append(out, Finding{File: rel, Line: r.Line, Msg: fmt.Sprintf("duplicate requirement id %s", r.ID)})
+			out = append(out, Finding{File: relPath, Line: r.Line, Msg: fmt.Sprintf("duplicate requirement id %s", r.ID)})
 		} else if r.Num != i+1 {
-			out = append(out, Finding{File: rel, Line: r.Line, Msg: fmt.Sprintf("requirement id %s out of sequence, expected R%d", r.ID, i+1)})
+			out = append(out, Finding{File: relPath, Line: r.Line, Msg: fmt.Sprintf("requirement id %s out of sequence, expected R%d", r.ID, i+1)})
 		}
 		seen[r.ID] = true
 	}
@@ -118,25 +119,25 @@ func SpecFindings(rel string, s model.Spec, raw []byte) []Finding {
 }
 
 // ProposalFindings applies every proposal rule.
-func ProposalFindings(rel string, raw []byte) []Finding {
-	out := headingFindings(rel, raw, []string{"## Why", "## What changes"})
-	return append(out, placeholderFindings(rel, raw)...)
+func ProposalFindings(relPath string, raw []byte) []Finding {
+	out := headingFindings(relPath, raw, []string{"## Why", "## What changes"})
+	return append(out, placeholderFindings(relPath, raw)...)
 }
 
 // TaskFindings applies every tasks.md rule.
-func TaskFindings(rel string, raw []byte, ts []model.Task) []Finding {
+func TaskFindings(relPath string, raw []byte, ts []model.Task) []Finding {
 	var out []Finding
 	for i, line := range strings.Split(string(raw), "\n") {
 		if strings.HasPrefix(line, "- [") && !wellFormedTask.MatchString(line) {
-			out = append(out, Finding{File: rel, Line: i + 1, Msg: "malformed task line, want \"- [ ] <n>. ...\""})
+			out = append(out, Finding{File: relPath, Line: i + 1, Msg: "malformed task line, want \"- [ ] <n>. ...\""})
 		}
 	}
 	seen := map[int]bool{}
 	for i, task := range ts {
 		if seen[task.Num] {
-			out = append(out, Finding{File: rel, Line: task.Line, Msg: fmt.Sprintf("duplicate task number %d", task.Num)})
+			out = append(out, Finding{File: relPath, Line: task.Line, Msg: fmt.Sprintf("duplicate task number %d", task.Num)})
 		} else if task.Num != i+1 {
-			out = append(out, Finding{File: rel, Line: task.Line, Msg: fmt.Sprintf("task number %d out of sequence, expected %d", task.Num, i+1)})
+			out = append(out, Finding{File: relPath, Line: task.Line, Msg: fmt.Sprintf("task number %d out of sequence, expected %d", task.Num, i+1)})
 		}
 		seen[task.Num] = true
 	}
@@ -154,11 +155,7 @@ func Structural(t *tree.Tree, changeID string) ([]Finding, error) {
 			return nil, err
 		}
 		for _, s := range specs {
-			raw, err := os.ReadFile(s.Path)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, SpecFindings(rel(t, s.Path), s, raw)...)
+			out = append(out, SpecFindings(rel(t, s.Path), s)...)
 		}
 
 		refFindings, err := RefFindings(t, specs)
@@ -176,21 +173,21 @@ func Structural(t *tree.Tree, changeID string) ([]Finding, error) {
 		if changeID != "" && c.ID != changeID {
 			continue
 		}
-		proposal := filepath.Join(c.Dir, "proposal.md")
+		proposal := filepath.Join(c.Dir, tree.ProposalFile)
 		raw, err := os.ReadFile(proposal)
 		switch {
 		case errors.Is(err, os.ErrNotExist):
-			out = append(out, Finding{File: rel(t, proposal), Line: 1, Msg: "missing proposal.md"})
+			out = append(out, Finding{File: rel(t, proposal), Line: 1, Msg: "missing " + tree.ProposalFile})
 		case err != nil:
 			return nil, err
 		default:
 			out = append(out, ProposalFindings(rel(t, proposal), raw)...)
 		}
-		tasksPath := filepath.Join(c.Dir, "tasks.md")
+		tasksPath := filepath.Join(c.Dir, tree.TasksFile)
 		tasksRaw, err := os.ReadFile(tasksPath)
 		switch {
 		case errors.Is(err, os.ErrNotExist):
-			out = append(out, Finding{File: rel(t, tasksPath), Line: 1, Msg: "missing tasks.md"})
+			out = append(out, Finding{File: rel(t, tasksPath), Line: 1, Msg: "missing " + tree.TasksFile})
 		case err != nil:
 			return nil, err
 		default:
@@ -200,6 +197,9 @@ func Structural(t *tree.Tree, changeID string) ([]Finding, error) {
 	return out, nil
 }
 
+// rel returns path relative to the tree root, falling back to path itself
+// on the (unreachable in practice) case that path isn't a descendant of
+// t.Root — every path passed in is always constructed from t.Root.
 func rel(t *tree.Tree, path string) string {
 	r, err := filepath.Rel(t.Root, path)
 	if err != nil {

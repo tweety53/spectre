@@ -2,6 +2,7 @@ package parse
 
 import (
 	"bufio"
+	"bytes"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,21 +16,21 @@ var reqRe = regexp.MustCompile(`^- (R(\d+)): (.*)$`)
 
 // SpecFile reads one capability file into a model.Spec.
 func SpecFile(path string) (model.Spec, error) {
-	f, err := os.Open(path)
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		return model.Spec{}, err
 	}
-	defer f.Close()
 
 	spec := model.Spec{
 		Capability: strings.TrimSuffix(filepath.Base(path), ".md"),
 		Path:       path,
+		Raw:        raw,
 	}
 
 	var purpose []string
 	section := ""
 	line := 0
-	sc := bufio.NewScanner(f)
+	sc := bufio.NewScanner(bytes.NewReader(raw))
 	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	for sc.Scan() {
 		line++

@@ -68,7 +68,7 @@ func (t *Tree) Changes(archived bool) ([]model.Change, error) {
 			continue
 		}
 		c := model.Change{ID: e.Name(), Dir: filepath.Join(dir, e.Name()), Archived: archived}
-		tasks, err := parse.TasksFile(filepath.Join(c.Dir, "tasks.md"))
+		tasks, err := parse.TasksFile(filepath.Join(c.Dir, TasksFile))
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}

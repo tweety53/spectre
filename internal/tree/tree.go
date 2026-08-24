@@ -14,6 +14,14 @@ import (
 // ErrNoRoot reports that no spectre/ directory was found.
 var ErrNoRoot = errors.New("no spectre/ directory found")
 
+// ProposalFile and TasksFile are the fixed filenames every change carries,
+// the one source of truth every package that creates, reads, or validates
+// a change agrees on.
+const (
+	ProposalFile = "proposal.md"
+	TasksFile    = "tasks.md"
+)
+
 // Tree is a resolved spectre tree.
 type Tree struct {
 	Root string // absolute path of the spectre/ directory

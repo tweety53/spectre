@@ -7,6 +7,7 @@ type Spec struct {
 	Purpose    string // prose under "## Purpose", newlines preserved
 	Reqs       []Requirement
 	Path       string // absolute path on disk
+	Raw        []byte // the file's bytes, as parsed
 }
 
 // Requirement is one "- R<n>: ..." bullet and the indented prose beneath it.
