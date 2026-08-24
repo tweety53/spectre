@@ -20,7 +20,8 @@ commands:
   archive <change-id>          move a finished change into changes/archive/
   migrate <openspec-dir>       convert an OpenSpec tree into a new spectre tree
 
-every command accepts --root <path> to name the tree explicitly
+every command except migrate accepts --root <path> to name the tree
+explicitly; migrate takes a source path and --out instead
 `
 
 func main() {

@@ -79,6 +79,25 @@ func TestMigrateConvertsSpecsAndChanges(t *testing.T) {
 	}
 }
 
+// TestMigrateHasNoRootFlag pins the final-review fix: migrate registered
+// --root and discarded it (fs, _ := flagSet(...)), contradicting the
+// top-level usage text's promise that every command accepts --root.
+// migrate genuinely has no use for a spectre tree to resolve — it takes a
+// source path and --out — so --root must now be an unregistered flag.
+func TestMigrateHasNoRootFlag(t *testing.T) {
+	src := openspecTree(t)
+	out := filepath.Join(t.TempDir(), "spectre")
+
+	var stdout, stderr bytes.Buffer
+	code := Migrate([]string{"--root", out, "--out", out, src}, &stdout, &stderr)
+	if code != Usage {
+		t.Fatalf("exit = %d, want %d (stdout=%q stderr=%q)", code, Usage, stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "root") {
+		t.Errorf("stderr = %q, want it to name the unrecognized --root flag", stderr.String())
+	}
+}
+
 func TestMigrateIsNonDestructive(t *testing.T) {
 	src := openspecTree(t)
 	out := filepath.Join(t.TempDir(), "spectre")

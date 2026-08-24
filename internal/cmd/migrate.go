@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -18,7 +19,12 @@ import (
 // Migrate converts an OpenSpec tree into a new spectre tree. It never
 // modifies the source.
 func Migrate(args []string, stdout, stderr io.Writer) int {
-	fs, _ := flagSet("migrate", stderr)
+	// migrate does not use flagSet: it takes a source path and --out, not
+	// a spectre tree to resolve via --root — --root registered and
+	// discarded would contradict the top-level usage text's promise that
+	// every command accepts it.
+	fs := flag.NewFlagSet("migrate", flag.ContinueOnError)
+	fs.SetOutput(stderr)
 	out := fs.String("out", "", "target tree (default: ./spectre)")
 	force := fs.Bool("force", false, "write into an existing target")
 	if err := fs.Parse(args); err != nil {
