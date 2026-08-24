@@ -193,7 +193,7 @@ example must not change what runs.
 |---------|-----|--------|---------|--------|
 | Rules | any rule name above | `error`, `off` | `error` | whether that validation rule produces findings |
 | Vocabulary | `modal` | any word | `SHALL` | the modal verb a requirement bullet must contain |
-| Vocabulary | `id-prefix` | letters | `R` | requirement id prefix, so `REQ-1` is as legal as `R1` |
+| Vocabulary | `id-prefix` | letters | `R` | requirement id prefix; replaces the default entirely, so `id-prefix: REQ-` makes `REQ-1` legal and `R1` no longer legal |
 | Layout | `specs` | relative path | `specs` | where capability files live inside the tree |
 | Layout | `changes` | relative path | `changes` | where change folders live inside the tree |
 | Layout | `extension` | file extension | `.md` | the spec file extension |
