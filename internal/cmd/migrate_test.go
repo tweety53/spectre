@@ -180,6 +180,55 @@ func TestMigrateWarnsOnMissingSHALL(t *testing.T) {
 	}
 }
 
+// TestMigrateExplainsShallClauseHandPass pins the migration-honesty ruling:
+// when migrate emits more than one no-SHALL finding, its report adds one
+// explanatory line naming the count and explaining that OpenSpec states
+// the modal in the requirement body while spectre states it in the
+// bullet — the class responsible for 249 of 278 warnings on the real
+// corpus. A single such finding is not a pattern worth calling out, so the
+// explanation must not appear then.
+func TestMigrateExplainsShallClauseHandPass(t *testing.T) {
+	// One no-SHALL finding: no batch explanation.
+	src1 := openspecTree(t)
+	if err := os.WriteFile(filepath.Join(src1, "specs", "auth", "spec.md"),
+		[]byte("# auth Specification\n\n## Purpose\nP.\n\n## Requirements\n\n### Requirement: token refresh\n\nBody prose.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out1 := filepath.Join(t.TempDir(), "spectre")
+	var stdout1, stderr1 bytes.Buffer
+	if code := Migrate([]string{"--out", out1, src1}, &stdout1, &stderr1); code != Fail {
+		t.Fatalf("exit = %d, want %d, stderr = %s", code, Fail, stderr1.String())
+	}
+	if strings.Contains(stdout1.String(), "hand pass") {
+		t.Errorf("a single no-SHALL finding should not trigger the batch explanation:\n%s", stdout1.String())
+	}
+
+	// Two no-SHALL findings: one explanatory line, naming the count.
+	src2 := openspecTree(t)
+	if err := os.WriteFile(filepath.Join(src2, "specs", "auth", "spec.md"),
+		[]byte("# auth Specification\n\n## Purpose\nP.\n\n## Requirements\n\n### Requirement: token refresh\n\nBody one.\n\n### Requirement: token revoke\n\nBody two.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out2 := filepath.Join(t.TempDir(), "spectre")
+	var stdout2, stderr2 bytes.Buffer
+	if code := Migrate([]string{"--out", out2, src2}, &stdout2, &stderr2); code != Fail {
+		t.Fatalf("exit = %d, want %d, stderr = %s", code, Fail, stderr2.String())
+	}
+	got := stdout2.String()
+	if strings.Count(got, "no SHALL clause") != 2 {
+		t.Fatalf("want 2 no-SHALL findings, got:\n%s", got)
+	}
+	if strings.Count(got, "hand pass") != 1 {
+		t.Errorf("want exactly one batch explanation naming the hand pass, got:\n%s", got)
+	}
+	if !strings.Contains(got, "2 of the warnings above are missing-SHALL findings") {
+		t.Errorf("report missing the count and class name:\n%s", got)
+	}
+	if !strings.Contains(got, "OpenSpec states the modal in the requirement body") || !strings.Contains(got, "spectre states it in the bullet") {
+		t.Errorf("report missing the OpenSpec-vs-spectre explanation:\n%s", got)
+	}
+}
+
 func TestMigrateForceClearsStaleFiles(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "openspec")
 	mk := func(rel, body string) {

@@ -177,13 +177,30 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return Usage
 	}
+	// OpenSpec states a requirement's normative sentence in the body;
+	// spectre's shall-clause rule requires it on the bullet itself, so a
+	// straightforward conversion trips this one rule on nearly every
+	// requirement — 249 of 278 warnings on a real corpus. The rule stays
+	// strict rather than accepting the body: a requirement's normative
+	// sentence belongs on its own line. noShall counts them separately so
+	// the report can name the class once instead of leaving the user to
+	// notice the pattern across hundreds of near-identical lines.
+	noShall := 0
+	shallSuffix := fmt.Sprintf("has no %s clause", cfg.Modal)
 	for _, f := range findings {
 		warnings = append(warnings, f.String())
+		if strings.Contains(f.Msg, shallSuffix) {
+			noShall++
+		}
 	}
 
 	fmt.Fprintf(stdout, "migrated %d spec(s), %d open change(s), %d archived file(s) into %s\n", len(specs), len(changes), archived, dst)
 	for _, w := range warnings {
 		fmt.Fprintf(stdout, "warning: %s\n", w)
+	}
+	if noShall > 1 {
+		fmt.Fprintf(stdout, "%d of the warnings above are missing-%s findings: OpenSpec states the modal in the requirement body, spectre states it in the bullet, so each needs a hand pass\n",
+			noShall, cfg.Modal)
 	}
 	if len(warnings) > 0 {
 		fmt.Fprintf(stdout, "%d warning(s) — the migration is incomplete\n", len(warnings))
