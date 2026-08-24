@@ -9,6 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/tweety53/spectre/internal/config"
+	"github.com/tweety53/spectre/internal/parse"
 )
 
 // ErrNoRoot reports that no spectre/ directory was found.
@@ -22,9 +25,11 @@ const (
 	TasksFile    = "tasks.md"
 )
 
-// Tree is a resolved spectre tree.
+// Tree is a resolved spectre tree, carrying its own configuration.
 type Tree struct {
 	Root string // absolute path of the spectre/ directory
+	Cfg  config.Config
+	P    *parse.Parser
 }
 
 // Find walks up from start looking for a spectre/ directory.
@@ -36,7 +41,7 @@ func Find(start string) (*Tree, error) {
 	for {
 		cand := filepath.Join(dir, "spectre")
 		if fi, err := os.Stat(cand); err == nil && fi.IsDir() {
-			return &Tree{Root: cand}, nil
+			return load(cand)
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
@@ -60,17 +65,26 @@ func Open(root string) (*Tree, error) {
 	if err != nil || !fi.IsDir() {
 		return nil, fmt.Errorf("%w at %s", ErrNoRoot, abs)
 	}
-	return &Tree{Root: abs}, nil
+	return load(abs)
+}
+
+// load reads the tree's configuration and builds its parser.
+func load(root string) (*Tree, error) {
+	cfg, err := config.Load(root)
+	if err != nil {
+		return nil, err
+	}
+	return &Tree{Root: root, Cfg: cfg, P: parse.New(cfg)}, nil
 }
 
 // SpecsDir is the tree's capability-specs subdirectory.
-func (t *Tree) SpecsDir() string { return filepath.Join(t.Root, "specs") }
+func (t *Tree) SpecsDir() string { return filepath.Join(t.Root, t.Cfg.SpecsDir) }
 
 // ChangesDir is the tree's open-changes subdirectory.
-func (t *Tree) ChangesDir() string { return filepath.Join(t.Root, "changes") }
+func (t *Tree) ChangesDir() string { return filepath.Join(t.Root, t.Cfg.ChangesDir) }
 
 // ArchiveDir is the tree's archived-changes subdirectory.
-func (t *Tree) ArchiveDir() string { return filepath.Join(t.Root, "changes", "archive") }
+func (t *Tree) ArchiveDir() string { return filepath.Join(t.ChangesDir(), "archive") }
 
 // Peers reads the peers file: "<name> <relative-path>" lines, blank lines
 // and # comments ignored. An absent file is not an error.

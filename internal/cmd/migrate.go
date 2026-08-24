@@ -8,8 +8,10 @@ import (
 	"strings"
 
 	"github.com/tweety53/spectre/internal/check"
+	"github.com/tweety53/spectre/internal/config"
 	"github.com/tweety53/spectre/internal/model"
 	"github.com/tweety53/spectre/internal/openspec"
+	"github.com/tweety53/spectre/internal/parse"
 	"github.com/tweety53/spectre/internal/render"
 	"github.com/tweety53/spectre/internal/tree"
 )
@@ -133,8 +135,11 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 	// The promise of a clean exit is that the written tree validates, so
 	// migrate runs exactly the checks "spectre validate" runs over a whole
 	// tree and reports every finding as a warning, rather than reimplementing
-	// any of check's rules itself.
-	dstTree := &tree.Tree{Root: dst}
+	// any of check's rules itself. migrate writes specs/, changes/ and no
+	// config.md, so its output always follows config.Default()'s layout,
+	// regardless of any config.md a previous --force run left behind.
+	cfg := config.Default()
+	dstTree := &tree.Tree{Root: dst, Cfg: cfg, P: parse.New(cfg)}
 	declaredPeers, err := dstTree.Peers()
 	if err != nil {
 		fmt.Fprintln(stderr, err)

@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/tweety53/spectre/internal/model"
-	"github.com/tweety53/spectre/internal/parse"
 )
 
 // Specs reads every capability file, sorted by capability name.
@@ -23,10 +22,10 @@ func (t *Tree) Specs() ([]model.Spec, error) {
 	}
 	var out []model.Spec
 	for _, e := range ents {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), t.Cfg.Extension) {
 			continue
 		}
-		s, err := parse.SpecFile(filepath.Join(t.SpecsDir(), e.Name()))
+		s, err := t.P.SpecFile(filepath.Join(t.SpecsDir(), e.Name()))
 		if err != nil {
 			return nil, err
 		}
@@ -38,14 +37,14 @@ func (t *Tree) Specs() ([]model.Spec, error) {
 
 // Spec reads one capability by name.
 func (t *Tree) Spec(capability string) (model.Spec, error) {
-	p := filepath.Join(t.SpecsDir(), capability+".md")
+	p := filepath.Join(t.SpecsDir(), capability+t.Cfg.Extension)
 	if _, err := os.Stat(p); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return model.Spec{}, fmt.Errorf("no such capability %q in %s", capability, t.SpecsDir())
 		}
 		return model.Spec{}, fmt.Errorf("capability %q in %s: %w", capability, t.SpecsDir(), err)
 	}
-	return parse.SpecFile(p)
+	return t.P.SpecFile(p)
 }
 
 // Changes reads open change folders under changes/, sorted by id.
@@ -75,7 +74,7 @@ func (t *Tree) changes(archived bool) ([]model.Change, error) {
 			continue
 		}
 		c := model.Change{ID: e.Name(), Dir: filepath.Join(dir, e.Name()), Archived: archived}
-		tasks, err := parse.TasksFile(filepath.Join(c.Dir, TasksFile))
+		tasks, err := t.P.TasksFile(filepath.Join(c.Dir, TasksFile))
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
