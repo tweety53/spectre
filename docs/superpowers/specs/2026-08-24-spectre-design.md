@@ -215,6 +215,7 @@ cmd/spectre/main.go   subcommand dispatch and exit codes
 internal/tree/        root resolution, peers, reading changes and specs
 internal/parse/       markdown to model
 internal/render/      model to markdown
+internal/check/       validation rules, pure functions over the model
 internal/cmd/         new.go list.go validate.go archive.go refs.go migrate.go
 internal/openspec/    the OpenSpec reader, used only by migrate
 ```
