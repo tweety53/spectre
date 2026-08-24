@@ -25,8 +25,16 @@ func indexOf(specs []model.Spec) index {
 // RefFindings resolves every reference in specs against this tree (root)
 // and peers, keyed by declared peer name and already resolved — Resolution
 // == PeerFound entries carry their specs, PeerNotPresent/PeerUnreadable
-// entries carry their classification. RefFindings does no I/O of its own:
-// a name absent from peers is treated as not declared.
+// entries carry their classification. RefFindings does no I/O of its own.
+//
+// peers must contain an entry for every name the tree actually declares
+// (e.g. built by resolving every key returned by Tree.Peers, one
+// tree.ResolvePeer call per name): a name absent from the map is treated
+// as not declared in peers, so passing a nil or partial map silently
+// turns a real, resolvable peer into a false "peer is not declared"
+// finding rather than an error. When a tree declares no peers at all, a
+// nil or empty map is correct and produces no false positives — there is
+// simply nothing for any reference to be missing from.
 func RefFindings(root string, specs []model.Spec, peers map[string]tree.ResolvedPeer) []Finding {
 	self := indexOf(specs)
 	peerIdx := map[string]index{} // peer name -> its index, built lazily from rp.Specs
