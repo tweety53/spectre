@@ -5,6 +5,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/tweety53/spectre/internal/model"
 )
@@ -22,11 +23,25 @@ func (p *Parser) TasksFile(path string) ([]model.Task, error) {
 
 	var out []model.Task
 	line := 0
+	inFence := false
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	for sc.Scan() {
 		line++
-		m := _taskRe.FindStringSubmatch(sc.Text())
+		t := sc.Text()
+
+		// Fence-aware, the same convention internal/check/check.go and
+		// internal/parse/spec.go use: a task-shaped line inside a fenced
+		// illustrative example must not be read as a real task.
+		if strings.HasPrefix(strings.TrimSpace(t), "```") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
+
+		m := _taskRe.FindStringSubmatch(t)
 		if m == nil {
 			continue
 		}

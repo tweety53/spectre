@@ -35,6 +35,31 @@ func TestTasksFile(t *testing.T) {
 	}
 }
 
+// TestTasksFileSkipsFencedExample pins the second-round final-review fix:
+// a task-shaped line inside a fenced example must not be read as a real
+// task, the same fence convention parser.SpecFile already applies.
+func TestTasksFileSkipsFencedExample(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "tasks.md")
+	body := "# Tasks\n\n" +
+		"- [x] 1. Parse the spec file\n" +
+		"- [ ] 2. Render it back\n" +
+		"```\n" +
+		"- [ ] 1. Not a real task, just an example\n" +
+		"```\n"
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	parser := New(config.Default())
+	got, err := parser.TasksFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("len = %d, want 2 (the fenced example line must be skipped): %+v", len(got), got)
+	}
+}
+
 func TestTasksFileMissing(t *testing.T) {
 	parser := New(config.Default())
 	if _, err := parser.TasksFile(filepath.Join(t.TempDir(), "nope.md")); err == nil {
