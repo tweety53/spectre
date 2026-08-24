@@ -106,17 +106,13 @@ func TaskFindings(rel string, raw []byte, ts []model.Task) []Finding {
 		}
 	}
 	seen := map[int]bool{}
-	expected := 1
-	for _, task := range ts {
+	for i, task := range ts {
 		if seen[task.Num] {
 			out = append(out, Finding{File: rel, Line: task.Line, Msg: fmt.Sprintf("duplicate task number %d", task.Num)})
-			continue
-		}
-		if task.Num != expected {
-			out = append(out, Finding{File: rel, Line: task.Line, Msg: fmt.Sprintf("task number %d out of sequence, expected %d", task.Num, expected)})
+		} else if task.Num != i+1 {
+			out = append(out, Finding{File: rel, Line: task.Line, Msg: fmt.Sprintf("task number %d out of sequence, expected %d", task.Num, i+1)})
 		}
 		seen[task.Num] = true
-		expected++
 	}
 	return out
 }
