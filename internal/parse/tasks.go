@@ -1,0 +1,41 @@
+package parse
+
+import (
+	"bufio"
+	"os"
+	"regexp"
+	"strconv"
+
+	"github.com/tweety53/spectre/internal/model"
+)
+
+var taskRe = regexp.MustCompile(`^- \[([ x])\] (\d+)\. (.*)$`)
+
+// TasksFile reads a change's tasks.md.
+func TasksFile(path string) ([]model.Task, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	var out []model.Task
+	line := 0
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	for sc.Scan() {
+		line++
+		m := taskRe.FindStringSubmatch(sc.Text())
+		if m == nil {
+			continue
+		}
+		num, _ := strconv.Atoi(m[2])
+		out = append(out, model.Task{
+			Num:  num,
+			Text: m[3],
+			Done: m[1] == "x",
+			Line: line,
+		})
+	}
+	return out, sc.Err()
+}

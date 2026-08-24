@@ -31,3 +31,17 @@ func Spec(s model.Spec) []byte {
 func collapseNewlines(s string) string {
 	return strings.ReplaceAll(s, "\n", " ")
 }
+
+// Tasks renders a change's tasks.md, renumbering from 1 in slice order.
+func Tasks(ts []model.Task) []byte {
+	var b bytes.Buffer
+	b.WriteString("# Tasks\n\n")
+	for i, t := range ts {
+		box := " "
+		if t.Done {
+			box = "x"
+		}
+		fmt.Fprintf(&b, "- [%s] %d. %s\n", box, i+1, t.Text)
+	}
+	return b.Bytes()
+}
