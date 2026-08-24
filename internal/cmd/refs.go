@@ -3,12 +3,11 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
+	"github.com/tweety53/spectre/internal/check"
 	"github.com/tweety53/spectre/internal/tree"
 )
 
@@ -38,90 +37,56 @@ func Refs(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return Usage
 	}
-
-	hits := 0
-	report := func(prefix, path string, line int, from, raw string) {
-		hits++
-		fmt.Fprintf(stdout, "%s%s:%d: %s cites %s\n", prefix, path, line, from, raw)
-	}
-
-	// This tree: a citation matches when it names no peer and resolves to
-	// the target capability, either explicitly or by being same-file.
 	specs, err := t.Specs()
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return Usage
 	}
-	for _, s := range specs {
-		for _, r := range s.Reqs {
-			for _, ref := range r.Refs {
-				if ref.Peer != "" || ref.ID != reqID {
-					continue
-				}
-				if ref.Capability == capName || (ref.Capability == "" && s.Capability == capName) {
-					rp, _ := filepath.Rel(t.Root, s.Path)
-					report("", rp, ref.Line, r.ID, ref.Raw)
-				}
-			}
-		}
-	}
 
 	scanned := []string{"this tree"}
+	var sources []check.PeerCitationSource
 	for _, name := range sortedKeys(peers) {
-		path := peers[name]
-		if _, err := os.Stat(path); err != nil {
+		rp := tree.ResolvePeer(peers, name)
+		switch rp.Resolution {
+		case tree.PeerNotPresent:
 			scanned = append(scanned, name+" (not present)")
 			continue
+		case tree.PeerUnreadable:
+			scanned = append(scanned, fmt.Sprintf("%s (unreadable: %s)", name, rp.Err))
+			continue
 		}
-		pt, err := tree.Open(path)
+		theirPeers, err := rp.Tree.Peers()
 		if err != nil {
 			scanned = append(scanned, fmt.Sprintf("%s (unreadable: %s)", name, err))
 			continue
 		}
-		theirPeers, err := pt.Peers()
-		if err != nil {
-			scanned = append(scanned, fmt.Sprintf("%s (unreadable: %s)", name, err))
-			continue
-		}
-		// Which name does this peer use for us?
-		ourNames := map[string]bool{}
-		for theirName, theirPath := range theirPeers {
-			if sameDir(theirPath, t.Root) {
-				ourNames[theirName] = true
-			}
-		}
-		pSpecs, err := pt.Specs()
+		pSpecs, err := rp.Tree.Specs()
 		if err != nil {
 			scanned = append(scanned, fmt.Sprintf("%s (unreadable: %s)", name, err))
 			continue
 		}
 		scanned = append(scanned, name)
-		for _, s := range pSpecs {
-			for _, r := range s.Reqs {
-				for _, ref := range r.Refs {
-					if ourNames[ref.Peer] && ref.Capability == capName && ref.ID == reqID {
-						rp, _ := filepath.Rel(pt.Root, s.Path)
-						report(name+":", rp, ref.Line, r.ID, ref.Raw)
-					}
-				}
-			}
-		}
+		sources = append(sources, check.PeerCitationSource{
+			Name:     name,
+			Root:     rp.Tree.Root,
+			Specs:    pSpecs,
+			OurNames: tree.NamesFor(theirPeers, t.Root),
+		})
 	}
 
-	if hits == 0 {
+	citations := check.Citations(t, capName, reqID, specs, sources)
+	for _, c := range citations {
+		prefix := ""
+		if c.Peer != "" {
+			prefix = c.Peer + ":"
+		}
+		fmt.Fprintf(stdout, "%s%s:%d: %s cites %s\n", prefix, c.Path, c.Line, c.From, c.Raw)
+	}
+	if len(citations) == 0 {
 		fmt.Fprintf(stdout, "no citations of %s#%s\n", capName, reqID)
 	}
 	fmt.Fprintf(stdout, "scanned: %s\n", strings.Join(scanned, ", "))
 	return OK
-}
-
-func sameDir(a, b string) bool {
-	ra, erra := filepath.EvalSymlinks(a)
-	rb, errb := filepath.EvalSymlinks(b)
-	if erra != nil || errb != nil {
-		return filepath.Clean(a) == filepath.Clean(b)
-	}
-	return ra == rb
 }
 
 func sortedKeys(m map[string]string) []string {
