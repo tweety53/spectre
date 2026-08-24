@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/tweety53/spectre/internal/config"
 	"github.com/tweety53/spectre/internal/model"
 	"github.com/tweety53/spectre/internal/tree"
 )
@@ -25,16 +26,17 @@ func (f Finding) String() string { return fmt.Sprintf("%s:%d: %s", f.File, f.Lin
 
 var _placeholders = []string{"TBD", "TODO"}
 
-var (
-	_wellFormedReq  = regexp.MustCompile(`^- R\d+: `)
-	_wellFormedTask = regexp.MustCompile(`^- \[[ x]\] \d+\. `)
-)
+var _wellFormedTask = regexp.MustCompile(`^- \[[ x]\] \d+\. `)
 
 // malformedReqFindings reports bullets inside "## Requirements" that the
 // parser cannot read as requirements, which would otherwise vanish silently.
 // Fenced code blocks are skipped, so an example bullet inside a ``` fence
-// is not mistaken for a malformed requirement.
-func malformedReqFindings(relPath string, raw []byte) []Finding {
+// is not mistaken for a malformed requirement. The well-formed pattern and
+// the message are built from prefix and modal, this tree's configured id
+// prefix and modal verb, so a bullet using the tree's own vocabulary is
+// never reported as malformed.
+func malformedReqFindings(relPath string, raw []byte, prefix, modal string) []Finding {
+	wellFormedReq := regexp.MustCompile(`^- ` + regexp.QuoteMeta(prefix) + `\d+: `)
 	var out []Finding
 	inReqs := false
 	inFence := false
@@ -50,8 +52,8 @@ func malformedReqFindings(relPath string, raw []byte) []Finding {
 			inReqs = strings.TrimSpace(strings.TrimPrefix(line, "## ")) == "Requirements"
 			continue
 		}
-		if inReqs && strings.HasPrefix(line, "- ") && !_wellFormedReq.MatchString(line) {
-			msg := "malformed requirement bullet, want \"- R<n>: ... SHALL ...\""
+		if inReqs && strings.HasPrefix(line, "- ") && !wellFormedReq.MatchString(line) {
+			msg := fmt.Sprintf("malformed requirement bullet, want \"- %s<n>: ... %s ...\"", prefix, modal)
 			out = append(out, Finding{File: relPath, Line: i + 1, Msg: msg})
 		}
 	}
@@ -97,40 +99,61 @@ func placeholderFindings(relPath string, raw []byte) []Finding {
 	return out
 }
 
-// SpecFindings applies every spec rule to one capability file. s.Raw
-// supplies the pre-parse text the regex-based checks need.
-func SpecFindings(relPath string, s model.Spec) []Finding {
-	want := []string{"# " + s.Capability, "## Purpose", "## Requirements"}
-	out := headingFindings(relPath, s.Raw, want)
-	out = append(out, placeholderFindings(relPath, s.Raw)...)
-	out = append(out, malformedReqFindings(relPath, s.Raw)...)
+// SpecFindings applies every spec rule to one capability file, under cfg's
+// rule gating and vocabulary. raw supplies the pre-parse text the
+// regex-based checks need; s carries the parsed requirements.
+func SpecFindings(cfg config.Config, relPath string, s model.Spec, raw []byte) []Finding {
+	var out []Finding
+	if cfg.Rules["headings"] {
+		want := []string{"# " + s.Capability, "## Purpose", "## Requirements"}
+		out = append(out, headingFindings(relPath, raw, want)...)
+	}
+	if cfg.Rules["placeholders"] {
+		out = append(out, placeholderFindings(relPath, raw)...)
+	}
+	if cfg.Rules["malformed-bullet"] {
+		out = append(out, malformedReqFindings(relPath, raw, cfg.IDPrefix, cfg.Modal)...)
+	}
 
 	seen := map[string]bool{}
 	for i, r := range s.Reqs {
-		if !strings.Contains(r.Text, " SHALL ") {
-			msg := fmt.Sprintf("requirement %s has no SHALL clause", r.ID)
+		if cfg.Rules["shall-clause"] && !strings.Contains(r.Text, " "+cfg.Modal+" ") {
+			msg := fmt.Sprintf("requirement %s has no %s clause", r.ID, cfg.Modal)
 			out = append(out, Finding{File: relPath, Line: r.Line, Msg: msg})
 		}
-		if seen[r.ID] {
-			msg := fmt.Sprintf("duplicate requirement id %s", r.ID)
-			out = append(out, Finding{File: relPath, Line: r.Line, Msg: msg})
-		} else if r.Num != i+1 {
-			msg := fmt.Sprintf("requirement id %s out of sequence, expected R%d", r.ID, i+1)
-			out = append(out, Finding{File: relPath, Line: r.Line, Msg: msg})
+		if cfg.Rules["id-sequence"] {
+			if seen[r.ID] {
+				msg := fmt.Sprintf("duplicate requirement id %s", r.ID)
+				out = append(out, Finding{File: relPath, Line: r.Line, Msg: msg})
+			} else if r.Num != i+1 {
+				msg := fmt.Sprintf("requirement id %s out of sequence, expected %s%d", r.ID, cfg.IDPrefix, i+1)
+				out = append(out, Finding{File: relPath, Line: r.Line, Msg: msg})
+			}
 		}
 		seen[r.ID] = true
 	}
 	return out
 }
 
-// ProposalFindings applies every proposal rule.
-func ProposalFindings(relPath string, raw []byte) []Finding {
-	out := headingFindings(relPath, raw, []string{"## Why", "## What changes"})
-	return append(out, placeholderFindings(relPath, raw)...)
+// ProposalFindings applies every proposal rule, under cfg's rule gating.
+func ProposalFindings(cfg config.Config, relPath string, raw []byte) []Finding {
+	var out []Finding
+	if cfg.Rules["headings"] {
+		out = append(out, headingFindings(relPath, raw, []string{"## Why", "## What changes"})...)
+	}
+	if cfg.Rules["placeholders"] {
+		out = append(out, placeholderFindings(relPath, raw)...)
+	}
+	return out
 }
 
-// TaskFindings applies every tasks.md rule.
-func TaskFindings(relPath string, raw []byte, ts []model.Task) []Finding {
+// TaskFindings applies every tasks.md rule, gated as one unit on
+// cfg.Rules["task-sequence"]: the malformed-task-line check, duplicate task
+// numbers and out-of-sequence task numbers all belong to it.
+func TaskFindings(cfg config.Config, relPath string, raw []byte, ts []model.Task) []Finding {
+	if !cfg.Rules["task-sequence"] {
+		return nil
+	}
 	var out []Finding
 	for i, line := range strings.Split(string(raw), "\n") {
 		if strings.HasPrefix(line, "- [") && !_wellFormedTask.MatchString(line) {
@@ -165,10 +188,12 @@ func Structural(t *tree.Tree, changeID string, peers map[string]tree.ResolvedPee
 			return nil, err
 		}
 		for _, s := range specs {
-			out = append(out, SpecFindings(rel(t, s.Path), s)...)
+			out = append(out, SpecFindings(t.Cfg, rel(t, s.Path), s, s.Raw)...)
 		}
 
-		out = append(out, RefFindings(t.Root, specs, peers)...)
+		if t.Cfg.Rules["refs"] {
+			out = append(out, RefFindings(t.Root, specs, peers)...)
+		}
 	}
 
 	changes, err := t.Changes()
@@ -187,7 +212,7 @@ func Structural(t *tree.Tree, changeID string, peers map[string]tree.ResolvedPee
 		case err != nil:
 			return nil, err
 		default:
-			out = append(out, ProposalFindings(rel(t, proposal), raw)...)
+			out = append(out, ProposalFindings(t.Cfg, rel(t, proposal), raw)...)
 		}
 		tasksPath := filepath.Join(c.Dir, tree.TasksFile)
 		tasksRaw, err := os.ReadFile(tasksPath)
@@ -197,7 +222,7 @@ func Structural(t *tree.Tree, changeID string, peers map[string]tree.ResolvedPee
 		case err != nil:
 			return nil, err
 		default:
-			out = append(out, TaskFindings(rel(t, tasksPath), tasksRaw, c.Tasks)...)
+			out = append(out, TaskFindings(t.Cfg, rel(t, tasksPath), tasksRaw, c.Tasks)...)
 		}
 	}
 	return out, nil

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tweety53/spectre/internal/config"
 	"github.com/tweety53/spectre/internal/model"
 	"github.com/tweety53/spectre/internal/tree"
 )
@@ -24,7 +25,7 @@ func TestSpecFindingsClean(t *testing.T) {
 	s := model.Spec{Capability: "auth", Purpose: "P.", Raw: raw, Reqs: []model.Requirement{
 		{ID: "R1", Num: 1, Text: "The system SHALL a.", Line: 7},
 	}}
-	if got := SpecFindings("specs/auth.md", s); len(got) != 0 {
+	if got := SpecFindings(config.Default(), "specs/auth.md", s, s.Raw); len(got) != 0 {
 		t.Errorf("want clean, got:\n%s", msgs(got))
 	}
 }
@@ -36,7 +37,7 @@ func TestSpecFindingsRequirementRules(t *testing.T) {
 		{ID: "R1", Num: 1, Text: "The system SHALL b.", Line: 8},
 		{ID: "R5", Num: 5, Text: "The system SHALL c.", Line: 9},
 	}}
-	got := msgs(SpecFindings("specs/auth.md", s))
+	got := msgs(SpecFindings(config.Default(), "specs/auth.md", s, s.Raw))
 	for _, want := range []string{
 		"specs/auth.md:7: requirement R1 has no SHALL clause",
 		"specs/auth.md:8: duplicate requirement id R1",
@@ -96,7 +97,7 @@ func TestSpecFindingsTable(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := model.Spec{Capability: "auth", Raw: []byte(tt.raw), Reqs: tt.reqs}
-			got := msgs(SpecFindings("specs/auth.md", s))
+			got := msgs(SpecFindings(config.Default(), "specs/auth.md", s, s.Raw))
 			for _, want := range tt.wantContains {
 				if !strings.Contains(got, want) {
 					t.Errorf("missing %q in:\n%s", want, got)
@@ -138,11 +139,11 @@ func TestStructuralMissingTasks(t *testing.T) {
 }
 
 func TestProposalFindings(t *testing.T) {
-	got := msgs(ProposalFindings("changes/x/proposal.md", []byte("# x\n\n## Why\nBecause.\n")))
+	got := msgs(ProposalFindings(config.Default(), "changes/x/proposal.md", []byte("# x\n\n## Why\nBecause.\n")))
 	if !strings.Contains(got, "missing \"## What changes\"") {
 		t.Errorf("got:\n%s", got)
 	}
-	clean := ProposalFindings("changes/x/proposal.md", []byte("# x\n\n## Why\nB.\n\n## What changes\nC.\n"))
+	clean := ProposalFindings(config.Default(), "changes/x/proposal.md", []byte("# x\n\n## Why\nB.\n\n## What changes\nC.\n"))
 	if len(clean) != 0 {
 		t.Errorf("want clean, got:\n%s", msgs(clean))
 	}
@@ -151,7 +152,7 @@ func TestProposalFindings(t *testing.T) {
 func TestTaskFindings(t *testing.T) {
 	raw := []byte("# Tasks\n\n- [x] 1. a\n- [ ] 1. b\n- [ ] 5. c\n")
 	ts := []model.Task{{Num: 1, Text: "a", Line: 3}, {Num: 1, Text: "b", Line: 4}, {Num: 5, Text: "c", Line: 5}}
-	got := msgs(TaskFindings("changes/x/tasks.md", raw, ts))
+	got := msgs(TaskFindings(config.Default(), "changes/x/tasks.md", raw, ts))
 	for _, want := range []string{
 		"changes/x/tasks.md:4: duplicate task number 1",
 		"changes/x/tasks.md:5: task number 5 out of sequence, expected 3",
@@ -164,7 +165,7 @@ func TestTaskFindings(t *testing.T) {
 
 func TestTaskFindingsMalformedLine(t *testing.T) {
 	raw := []byte("# Tasks\n\n- [ ] Write the parser\n")
-	got := msgs(TaskFindings("changes/x/tasks.md", raw, nil))
+	got := msgs(TaskFindings(config.Default(), "changes/x/tasks.md", raw, nil))
 	if !strings.Contains(got, "changes/x/tasks.md:3: malformed task line") {
 		t.Errorf("got:\n%s", got)
 	}

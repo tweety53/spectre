@@ -11,8 +11,6 @@ import (
 	"github.com/tweety53/spectre/internal/tree"
 )
 
-var _targetRe = regexp.MustCompile(`^([a-z0-9][a-z0-9-]*)#(R\d+)$`)
-
 // Refs prints every citation of one requirement, in this tree and in each
 // declared peer, then the trees it scanned.
 func Refs(args []string, stdout, stderr io.Writer) int {
@@ -20,18 +18,23 @@ func Refs(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return Usage
 	}
-	m := _targetRe.FindStringSubmatch(fs.Arg(0))
-	if fs.NArg() != 1 || m == nil {
-		fmt.Fprintln(stderr, "usage: spectre refs <capability>#<id>")
-		return Usage
-	}
-	capName, reqID := m[1], m[2]
 
 	t, err := resolve(*root)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return Usage
 	}
+
+	// The <id> half of the argument follows this tree's own configured id
+	// prefix, so the pattern is built only after the tree is resolved.
+	targetRe := regexp.MustCompile(`^([a-z0-9][a-z0-9-]*)#(` + regexp.QuoteMeta(t.Cfg.IDPrefix) + `\d+)$`)
+	m := targetRe.FindStringSubmatch(fs.Arg(0))
+	if fs.NArg() != 1 || m == nil {
+		fmt.Fprintln(stderr, "usage: spectre refs <capability>#<id>")
+		return Usage
+	}
+	capName, reqID := m[1], m[2]
+
 	peers, err := t.Peers()
 	if err != nil {
 		fmt.Fprintln(stderr, err)
