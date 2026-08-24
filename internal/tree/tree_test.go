@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -80,5 +81,58 @@ func TestPeersAbsent(t *testing.T) {
 	}
 	if len(peers) != 0 {
 		t.Errorf("len = %d, want 0", len(peers))
+	}
+}
+
+func TestPeersDuplicateName(t *testing.T) {
+	parent := t.TempDir()
+	me := makeTree(t, filepath.Join(parent, "app"))
+	makeTree(t, filepath.Join(parent, "gymie"))
+	makeTree(t, filepath.Join(parent, "other"))
+
+	body := "gymie ../gymie\nother ../other\ngymie ../other\n"
+	if err := os.WriteFile(filepath.Join(me, "spectre", "peers"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tr, err := Find(me)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = tr.Peers()
+	if err == nil {
+		t.Fatalf("Peers() should error on duplicate name, got nil")
+	}
+	// Check that both line numbers appear in the error message
+	if !strings.Contains(err.Error(), "3") || !strings.Contains(err.Error(), "1") {
+		t.Errorf("error message should contain both line numbers: %v", err)
+	}
+}
+
+func TestPeersAliases(t *testing.T) {
+	parent := t.TempDir()
+	me := makeTree(t, filepath.Join(parent, "app"))
+	target := makeTree(t, filepath.Join(parent, "target"))
+
+	body := "alias1 ../target\nalias2 ../target\n"
+	if err := os.WriteFile(filepath.Join(me, "spectre", "peers"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tr, err := Find(me)
+	if err != nil {
+		t.Fatal(err)
+	}
+	peers, err := tr.Peers()
+	if err != nil {
+		t.Fatalf("Peers() should allow aliases: %v", err)
+	}
+	if len(peers) != 2 {
+		t.Fatalf("len = %d, want 2", len(peers))
+	}
+	want, _ := filepath.EvalSymlinks(filepath.Join(target, "spectre"))
+	for name := range peers {
+		got, _ := filepath.EvalSymlinks(peers[name])
+		if got != want {
+			t.Errorf("peers[%s] = %q, want %q", name, got, want)
+		}
 	}
 }

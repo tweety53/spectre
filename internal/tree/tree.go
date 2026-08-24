@@ -73,6 +73,7 @@ func (t *Tree) Peers() (map[string]string, error) {
 	defer f.Close()
 
 	out := map[string]string{}
+	seen := map[string]int{} // track line numbers for duplicate detection
 	sc := bufio.NewScanner(f)
 	line := 0
 	for sc.Scan() {
@@ -85,6 +86,12 @@ func (t *Tree) Peers() (map[string]string, error) {
 		if len(fields) != 2 {
 			return nil, fmt.Errorf("peers:%d: want \"<name> <path>\", got %q", line, t2)
 		}
+		name := fields[0]
+		if prevLine, exists := seen[name]; exists {
+			return nil, fmt.Errorf("peers:%d: duplicate name %q (first seen on line %d)", line, name, prevLine)
+		}
+		seen[name] = line
+
 		p := fields[1]
 		if !filepath.IsAbs(p) {
 			p = filepath.Join(filepath.Dir(t.Root), p)
@@ -92,7 +99,7 @@ func (t *Tree) Peers() (map[string]string, error) {
 		if filepath.Base(p) != "spectre" {
 			p = filepath.Join(p, "spectre")
 		}
-		out[fields[0]] = filepath.Clean(p)
+		out[name] = filepath.Clean(p)
 	}
 	return out, sc.Err()
 }
