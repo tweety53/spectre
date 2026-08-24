@@ -29,7 +29,9 @@ type PeerCitationSource struct {
 // Citations finds every citation of capability#id: in this tree's specs
 // (a same-file or same-tree reference resolving to it), and in each peer
 // source (a reference naming this tree by any of its OurNames).
-func Citations(t *tree.Tree, capName, reqID string, specs []model.Spec, peers []PeerCitationSource) []Citation {
+func Citations(
+	t *tree.Tree, capName, reqID string, specs []model.Spec, peers []PeerCitationSource,
+) []Citation {
 	var out []Citation
 	for _, s := range specs {
 		for _, r := range s.Reqs {

@@ -8,12 +8,12 @@ import (
 )
 
 // (@R4) same file, (@plans#R4) same tree, (@gymie:plans#R4) peer tree.
-var refRe = regexp.MustCompile(`\(@(?:([a-z0-9][a-z0-9-]*):)?(?:([a-z0-9][a-z0-9-]*)#)?(R\d+)\)`)
+var _refRe = regexp.MustCompile(`\(@(?:([a-z0-9][a-z0-9-]*):)?(?:([a-z0-9][a-z0-9-]*)#)?(R\d+)\)`)
 
 // Refs extracts every reference in text, tagging each with line.
 func Refs(text string, line int) []model.Ref {
 	var out []model.Ref
-	for _, m := range refRe.FindAllStringSubmatch(text, -1) {
+	for _, m := range _refRe.FindAllStringSubmatch(text, -1) {
 		out = append(out, model.Ref{
 			Peer:       m[1],
 			Capability: m[2],

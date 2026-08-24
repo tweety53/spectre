@@ -22,7 +22,8 @@ const (
 func flagSet(name string, stderr io.Writer) (*flag.FlagSet, *string) {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	root := fs.String("root", "", "path to the spectre tree (default: search upwards from the working directory)")
+	usage := "path to the spectre tree (default: search upwards from the working directory)"
+	root := fs.String("root", "", usage)
 	return fs, root
 }
 

@@ -13,7 +13,8 @@ import (
 // Spec renders one capability file.
 func Spec(s model.Spec) []byte {
 	var b bytes.Buffer
-	fmt.Fprintf(&b, "# %s\n\n## Purpose\n%s\n\n## Requirements\n", collapseNewlines(s.Capability), s.Purpose)
+	fmt.Fprintf(&b, "# %s\n\n## Purpose\n%s\n\n## Requirements\n",
+		collapseNewlines(s.Capability), s.Purpose)
 	for _, r := range s.Reqs {
 		fmt.Fprintf(&b, "- %s: %s\n", r.ID, collapseNewlines(r.Text))
 		for _, n := range r.Notes {

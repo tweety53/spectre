@@ -12,7 +12,7 @@ import (
 	"github.com/tweety53/spectre/internal/model"
 )
 
-var reqRe = regexp.MustCompile(`^- (R(\d+)): (.*)$`)
+var _reqRe = regexp.MustCompile(`^- (R(\d+)): (.*)$`)
 
 // SpecFile reads one capability file into a model.Spec.
 func SpecFile(path string) (model.Spec, error) {
@@ -45,7 +45,10 @@ func SpecFile(path string) (model.Spec, error) {
 		case "Purpose":
 			purpose = append(purpose, t)
 		case "Requirements":
-			if m := reqRe.FindStringSubmatch(t); m != nil {
+			if m := _reqRe.FindStringSubmatch(t); m != nil {
+				// The regex only captures \d+, so Atoi fails only on
+				// overflow; num then stays 0, which the sequencing checks
+				// in check.SpecFindings report as out of sequence.
 				num, _ := strconv.Atoi(m[2])
 				spec.Reqs = append(spec.Reqs, model.Requirement{
 					ID:   m[1],

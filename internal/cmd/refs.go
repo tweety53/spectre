@@ -11,7 +11,7 @@ import (
 	"github.com/tweety53/spectre/internal/tree"
 )
 
-var targetRe = regexp.MustCompile(`^([a-z0-9][a-z0-9-]*)#(R\d+)$`)
+var _targetRe = regexp.MustCompile(`^([a-z0-9][a-z0-9-]*)#(R\d+)$`)
 
 // Refs prints every citation of one requirement, in this tree and in each
 // declared peer, then the trees it scanned.
@@ -20,7 +20,7 @@ func Refs(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return Usage
 	}
-	m := targetRe.FindStringSubmatch(fs.Arg(0))
+	m := _targetRe.FindStringSubmatch(fs.Arg(0))
 	if fs.NArg() != 1 || m == nil {
 		fmt.Fprintln(stderr, "usage: spectre refs <capability>#<id>")
 		return Usage

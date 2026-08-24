@@ -9,7 +9,7 @@ import (
 	"github.com/tweety53/spectre/internal/model"
 )
 
-var taskRe = regexp.MustCompile(`^- \[([ x])\] (\d+)\. (.*)$`)
+var _taskRe = regexp.MustCompile(`^- \[([ x])\] (\d+)\. (.*)$`)
 
 // TasksFile reads a change's tasks.md.
 func TasksFile(path string) ([]model.Task, error) {
@@ -25,10 +25,13 @@ func TasksFile(path string) ([]model.Task, error) {
 	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	for sc.Scan() {
 		line++
-		m := taskRe.FindStringSubmatch(sc.Text())
+		m := _taskRe.FindStringSubmatch(sc.Text())
 		if m == nil {
 			continue
 		}
+		// The regex only captures \d+, so Atoi fails only on overflow; num
+		// then stays 0, which the sequencing checks in check.TaskFindings
+		// report as out of sequence.
 		num, _ := strconv.Atoi(m[2])
 		out = append(out, model.Task{
 			Num:  num,

@@ -11,7 +11,7 @@ import (
 	"github.com/tweety53/spectre/internal/tree"
 )
 
-const proposalTemplate = `# %s
+const _proposalTemplate = `# %s
 
 ## Why
 
@@ -56,7 +56,7 @@ func New(args []string, stdout, stderr io.Writer) int {
 	}
 
 	files := map[string][]byte{
-		tree.ProposalFile: []byte(fmt.Sprintf(proposalTemplate, id)),
+		tree.ProposalFile: []byte(fmt.Sprintf(_proposalTemplate, id)),
 		tree.TasksFile:    render.Tasks(nil),
 	}
 	for name, body := range files {

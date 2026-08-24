@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/tweety53/spectre/internal/tree"
 )
 
 // Archive moves a finished change into changes/archive/ with git mv. It
@@ -42,12 +44,14 @@ func Archive(args []string, stdout, stderr io.Writer) int {
 		if c.ID != id {
 			continue
 		}
-		if _, err := os.Stat(filepath.Join(c.Dir, "tasks.md")); errors.Is(err, os.ErrNotExist) && !*force {
+		tasksPath := filepath.Join(c.Dir, tree.TasksFile)
+		if _, err := os.Stat(tasksPath); errors.Is(err, os.ErrNotExist) && !*force {
 			fmt.Fprintf(stderr, "%s: no tasks.md (use --force to archive anyway)\n", id)
 			return Fail
 		}
 		if left := len(c.Tasks) - c.DoneCount(); left > 0 && !*force {
-			fmt.Fprintf(stderr, "%s: %d of %d tasks are unchecked (use --force to archive anyway)\n", id, left, len(c.Tasks))
+			fmt.Fprintf(stderr, "%s: %d of %d tasks are unchecked (use --force to archive anyway)\n",
+				id, left, len(c.Tasks))
 			return Fail
 		}
 		dst := filepath.Join(t.ArchiveDir(), id)

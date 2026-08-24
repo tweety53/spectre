@@ -46,7 +46,7 @@ type Task struct {
 	Line int
 }
 
-// Done reports how many of the change's tasks are checked.
+// DoneCount reports how many of the change's tasks are checked.
 func (c Change) DoneCount() int {
 	n := 0
 	for _, t := range c.Tasks {

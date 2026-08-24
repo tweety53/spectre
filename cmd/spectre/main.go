@@ -8,7 +8,7 @@ import (
 	"github.com/tweety53/spectre/internal/cmd"
 )
 
-const usage = `spectre — spec-driven change tracking in markdown
+const _usage = `spectre — spec-driven change tracking in markdown
 
 usage: spectre <command> [flags] [args]
 
@@ -18,14 +18,13 @@ commands:
   validate [change-id]         check the tree, or one change
   refs <capability>#<id>       find citations of a requirement
   archive <change-id>          move a finished change into changes/archive/
-  migrate <openspec-dir>       convert an OpenSpec tree (optional)
 
 every command accepts --root <path> to name the tree explicitly
 `
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprint(os.Stderr, usage)
+		fmt.Fprint(os.Stderr, _usage)
 		os.Exit(cmd.Usage)
 	}
 	args := os.Args[2:]
@@ -41,10 +40,10 @@ func main() {
 	case "archive":
 		os.Exit(cmd.Archive(args, os.Stdout, os.Stderr))
 	case "-h", "--help", "help":
-		fmt.Fprint(os.Stdout, usage)
+		fmt.Fprint(os.Stdout, _usage)
 		os.Exit(cmd.OK)
 	default:
-		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", os.Args[1], usage)
+		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", os.Args[1], _usage)
 		os.Exit(cmd.Usage)
 	}
 }

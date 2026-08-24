@@ -74,11 +74,13 @@ func RefFindings(t *tree.Tree, specs []model.Spec) ([]Finding, error) {
 					out = append(out, at)
 					continue
 				case tree.PeerNotPresent:
-					at.Msg = fmt.Sprintf("%s: peer %q is declared but its tree is not present at %s", ref.Raw, ref.Peer, rp.Path)
+					at.Msg = fmt.Sprintf("%s: peer %q is declared but its tree is not present at %s",
+						ref.Raw, ref.Peer, rp.Path)
 					out = append(out, at)
 					continue
 				case tree.PeerUnreadable:
-					at.Msg = fmt.Sprintf("%s: peer %q could not be read at %s: %v", ref.Raw, ref.Peer, rp.Path, rp.Err)
+					at.Msg = fmt.Sprintf("%s: peer %q could not be read at %s: %v",
+						ref.Raw, ref.Peer, rp.Path, rp.Err)
 					out = append(out, at)
 					continue
 				}
@@ -87,8 +89,11 @@ func RefFindings(t *tree.Tree, specs []model.Spec) ([]Finding, error) {
 				if !loaded {
 					pSpecs, err := rp.Tree.Specs()
 					if err != nil {
-						resolved[ref.Peer] = tree.ResolvedPeer{Name: ref.Peer, Path: rp.Path, Resolution: tree.PeerUnreadable, Err: err}
-						at.Msg = fmt.Sprintf("%s: peer %q could not be read at %s: %v", ref.Raw, ref.Peer, rp.Path, err)
+						resolved[ref.Peer] = tree.ResolvedPeer{
+							Name: ref.Peer, Path: rp.Path, Resolution: tree.PeerUnreadable, Err: err,
+						}
+						at.Msg = fmt.Sprintf("%s: peer %q could not be read at %s: %v",
+							ref.Raw, ref.Peer, rp.Path, err)
 						out = append(out, at)
 						continue
 					}
@@ -102,7 +107,8 @@ func RefFindings(t *tree.Tree, specs []model.Spec) ([]Finding, error) {
 					continue
 				}
 				if !ids[ref.ID] {
-					at.Msg = fmt.Sprintf("%s: no requirement %s in %s:%s", ref.Raw, ref.ID, ref.Peer, ref.Capability)
+					at.Msg = fmt.Sprintf("%s: no requirement %s in %s:%s",
+						ref.Raw, ref.ID, ref.Peer, ref.Capability)
 					out = append(out, at)
 				}
 			}

@@ -63,9 +63,13 @@ func Open(root string) (*Tree, error) {
 	return &Tree{Root: abs}, nil
 }
 
-// SpecsDir, ChangesDir and ArchiveDir are the tree's fixed subdirectories.
-func (t *Tree) SpecsDir() string   { return filepath.Join(t.Root, "specs") }
+// SpecsDir is the tree's capability-specs subdirectory.
+func (t *Tree) SpecsDir() string { return filepath.Join(t.Root, "specs") }
+
+// ChangesDir is the tree's open-changes subdirectory.
 func (t *Tree) ChangesDir() string { return filepath.Join(t.Root, "changes") }
+
+// ArchiveDir is the tree's archived-changes subdirectory.
 func (t *Tree) ArchiveDir() string { return filepath.Join(t.Root, "changes", "archive") }
 
 // Peers reads the peers file: "<name> <relative-path>" lines, blank lines
@@ -86,17 +90,18 @@ func (t *Tree) Peers() (map[string]string, error) {
 	line := 0
 	for sc.Scan() {
 		line++
-		t2 := strings.TrimSpace(sc.Text())
-		if t2 == "" || strings.HasPrefix(t2, "#") {
+		text := strings.TrimSpace(sc.Text())
+		if text == "" || strings.HasPrefix(text, "#") {
 			continue
 		}
-		fields := strings.Fields(t2)
+		fields := strings.Fields(text)
 		if len(fields) != 2 {
-			return nil, fmt.Errorf("peers:%d: want \"<name> <path>\", got %q", line, t2)
+			return nil, fmt.Errorf("peers:%d: want \"<name> <path>\", got %q", line, text)
 		}
 		name := fields[0]
 		if prevLine, exists := seen[name]; exists {
-			return nil, fmt.Errorf("peers:%d: duplicate name %q (first seen on line %d)", line, name, prevLine)
+			return nil, fmt.Errorf("peers:%d: duplicate name %q (first seen on line %d)",
+				line, name, prevLine)
 		}
 		seen[name] = line
 

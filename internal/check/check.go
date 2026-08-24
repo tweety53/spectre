@@ -23,11 +23,11 @@ type Finding struct {
 
 func (f Finding) String() string { return fmt.Sprintf("%s:%d: %s", f.File, f.Line, f.Msg) }
 
-var placeholders = []string{"TBD", "TODO"}
+var _placeholders = []string{"TBD", "TODO"}
 
 var (
-	wellFormedReq  = regexp.MustCompile(`^- R\d+: `)
-	wellFormedTask = regexp.MustCompile(`^- \[[ x]\] \d+\. `)
+	_wellFormedReq  = regexp.MustCompile(`^- R\d+: `)
+	_wellFormedTask = regexp.MustCompile(`^- \[[ x]\] \d+\. `)
 )
 
 // malformedReqFindings reports bullets inside "## Requirements" that the
@@ -50,8 +50,9 @@ func malformedReqFindings(relPath string, raw []byte) []Finding {
 			inReqs = strings.TrimSpace(strings.TrimPrefix(line, "## ")) == "Requirements"
 			continue
 		}
-		if inReqs && strings.HasPrefix(line, "- ") && !wellFormedReq.MatchString(line) {
-			out = append(out, Finding{File: relPath, Line: i + 1, Msg: "malformed requirement bullet, want \"- R<n>: ... SHALL ...\""})
+		if inReqs && strings.HasPrefix(line, "- ") && !_wellFormedReq.MatchString(line) {
+			msg := "malformed requirement bullet, want \"- R<n>: ... SHALL ...\""
+			out = append(out, Finding{File: relPath, Line: i + 1, Msg: msg})
 		}
 	}
 	return out
@@ -87,7 +88,7 @@ func headingFindings(relPath string, raw []byte, want []string) []Finding {
 func placeholderFindings(relPath string, raw []byte) []Finding {
 	var out []Finding
 	for i, line := range strings.Split(string(raw), "\n") {
-		for _, p := range placeholders {
+		for _, p := range _placeholders {
 			if strings.Contains(line, p) {
 				out = append(out, Finding{File: relPath, Line: i + 1, Msg: fmt.Sprintf("placeholder %q", p)})
 			}
@@ -99,19 +100,23 @@ func placeholderFindings(relPath string, raw []byte) []Finding {
 // SpecFindings applies every spec rule to one capability file. s.Raw
 // supplies the pre-parse text the regex-based checks need.
 func SpecFindings(relPath string, s model.Spec) []Finding {
-	out := headingFindings(relPath, s.Raw, []string{"# " + s.Capability, "## Purpose", "## Requirements"})
+	want := []string{"# " + s.Capability, "## Purpose", "## Requirements"}
+	out := headingFindings(relPath, s.Raw, want)
 	out = append(out, placeholderFindings(relPath, s.Raw)...)
 	out = append(out, malformedReqFindings(relPath, s.Raw)...)
 
 	seen := map[string]bool{}
 	for i, r := range s.Reqs {
 		if !strings.Contains(r.Text, " SHALL ") {
-			out = append(out, Finding{File: relPath, Line: r.Line, Msg: fmt.Sprintf("requirement %s has no SHALL clause", r.ID)})
+			msg := fmt.Sprintf("requirement %s has no SHALL clause", r.ID)
+			out = append(out, Finding{File: relPath, Line: r.Line, Msg: msg})
 		}
 		if seen[r.ID] {
-			out = append(out, Finding{File: relPath, Line: r.Line, Msg: fmt.Sprintf("duplicate requirement id %s", r.ID)})
+			msg := fmt.Sprintf("duplicate requirement id %s", r.ID)
+			out = append(out, Finding{File: relPath, Line: r.Line, Msg: msg})
 		} else if r.Num != i+1 {
-			out = append(out, Finding{File: relPath, Line: r.Line, Msg: fmt.Sprintf("requirement id %s out of sequence, expected R%d", r.ID, i+1)})
+			msg := fmt.Sprintf("requirement id %s out of sequence, expected R%d", r.ID, i+1)
+			out = append(out, Finding{File: relPath, Line: r.Line, Msg: msg})
 		}
 		seen[r.ID] = true
 	}
@@ -128,16 +133,19 @@ func ProposalFindings(relPath string, raw []byte) []Finding {
 func TaskFindings(relPath string, raw []byte, ts []model.Task) []Finding {
 	var out []Finding
 	for i, line := range strings.Split(string(raw), "\n") {
-		if strings.HasPrefix(line, "- [") && !wellFormedTask.MatchString(line) {
-			out = append(out, Finding{File: relPath, Line: i + 1, Msg: "malformed task line, want \"- [ ] <n>. ...\""})
+		if strings.HasPrefix(line, "- [") && !_wellFormedTask.MatchString(line) {
+			msg := "malformed task line, want \"- [ ] <n>. ...\""
+			out = append(out, Finding{File: relPath, Line: i + 1, Msg: msg})
 		}
 	}
 	seen := map[int]bool{}
 	for i, task := range ts {
 		if seen[task.Num] {
-			out = append(out, Finding{File: relPath, Line: task.Line, Msg: fmt.Sprintf("duplicate task number %d", task.Num)})
+			msg := fmt.Sprintf("duplicate task number %d", task.Num)
+			out = append(out, Finding{File: relPath, Line: task.Line, Msg: msg})
 		} else if task.Num != i+1 {
-			out = append(out, Finding{File: relPath, Line: task.Line, Msg: fmt.Sprintf("task number %d out of sequence, expected %d", task.Num, i+1)})
+			msg := fmt.Sprintf("task number %d out of sequence, expected %d", task.Num, i+1)
+			out = append(out, Finding{File: relPath, Line: task.Line, Msg: msg})
 		}
 		seen[task.Num] = true
 	}
