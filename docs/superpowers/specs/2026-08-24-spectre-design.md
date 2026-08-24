@@ -137,7 +137,13 @@ Three scopes, widening left to right:
 Resolution is four ordered checks, each with its own message: the peer is declared in `peers`; its
 path exists; the capability file exists inside it; the id is present in that file. There is no
 network access, no fetch and no cache — a neighbour that is not checked out produces a finding, not
-a silent pass.
+a silent pass, and neither does one that is present but unreadable: a peer whose own files cannot be
+read is reported against the citing reference rather than abandoning the run, since the citing tree
+may be sound.
+
+A citation naming a peer but no capability — `(@gymie:R4)` — is reported as malformed rather than
+resolved or ignored. The parser admits the shape deliberately: a citation silently dropped at parse
+time is the failure this tool exists to prevent, so it is read and then named.
 
 ## Commands
 
