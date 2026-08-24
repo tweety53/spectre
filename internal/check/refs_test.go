@@ -105,3 +105,40 @@ func TestRefFindingsUnknownCapabilityAndID(t *testing.T) {
 		}
 	}
 }
+
+func TestRefFindingsMalformedPeerReference(t *testing.T) {
+	tr := twoTrees(t,
+		map[string]string{"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@gymie:R4).\n"},
+		map[string]string{"billing": "# billing\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL d.\n"},
+		"gymie ../gymie\n")
+	if got := findingsFor(t, tr); !strings.Contains(got, "@gymie:R4: malformed reference, want <peer>:<capability>#<id>") {
+		t.Errorf("got:\n%s", got)
+	}
+}
+
+func TestRefFindingsPeerUnreadable(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root: file modes are not enforced")
+	}
+	tr := twoTrees(t,
+		map[string]string{"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@gymie:billing#R1).\n"},
+		map[string]string{"billing": "# billing\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL d.\n"},
+		"gymie ../gymie\n")
+	specPath := filepath.Join(filepath.Dir(tr.Root), "..", "gymie", "spectre", "specs", "billing.md")
+	if err := os.Chmod(specPath, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(specPath, 0o644) })
+
+	specs, err := tr.Specs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := RefFindings(tr, specs)
+	if err != nil {
+		t.Fatalf("want nil error, got %v", err)
+	}
+	if msg := msgs(got); !strings.Contains(msg, "peer \"gymie\" could not be read at") {
+		t.Errorf("got:\n%s", msg)
+	}
+}

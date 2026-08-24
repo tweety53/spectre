@@ -31,8 +31,9 @@ func RefFindings(t *tree.Tree, specs []model.Spec) ([]Finding, error) {
 		return nil, err
 	}
 	self := indexOf(specs)
-	peerIdx := map[string]index{} // peer name -> its index
-	missing := map[string]bool{}  // peer name -> declared but absent on disk
+	peerIdx := map[string]index{}    // peer name -> its index
+	missing := map[string]bool{}     // peer name -> declared but absent on disk
+	unreadable := map[string]error{} // peer name -> declared, present, but could not be opened/read
 
 	var out []Finding
 	for _, s := range specs {
@@ -58,6 +59,12 @@ func RefFindings(t *tree.Tree, specs []model.Spec) ([]Finding, error) {
 					continue
 				}
 
+				if ref.Capability == "" {
+					at.Msg = fmt.Sprintf("%s: malformed reference, want <peer>:<capability>#<id>", ref.Raw)
+					out = append(out, at)
+					continue
+				}
+
 				path, declared := peers[ref.Peer]
 				if !declared {
 					at.Msg = fmt.Sprintf("%s: peer %q is not declared in peers", ref.Raw, ref.Peer)
@@ -69,6 +76,11 @@ func RefFindings(t *tree.Tree, specs []model.Spec) ([]Finding, error) {
 					out = append(out, at)
 					continue
 				}
+				if uerr, failed := unreadable[ref.Peer]; failed {
+					at.Msg = fmt.Sprintf("%s: peer %q could not be read at %s: %v", ref.Raw, ref.Peer, path, uerr)
+					out = append(out, at)
+					continue
+				}
 				idx, loaded := peerIdx[ref.Peer]
 				if !loaded {
 					if _, err := os.Stat(path); err != nil {
@@ -77,16 +89,24 @@ func RefFindings(t *tree.Tree, specs []model.Spec) ([]Finding, error) {
 						out = append(out, at)
 						continue
 					}
-					pt, err := tree.Open(path)
-					if err != nil {
-						return nil, err
+					pt, openErr := tree.Open(path)
+					var loadErr error
+					if openErr != nil {
+						loadErr = openErr
+					} else {
+						var pSpecs []model.Spec
+						pSpecs, loadErr = pt.Specs()
+						if loadErr == nil {
+							idx = indexOf(pSpecs)
+							peerIdx[ref.Peer] = idx
+						}
 					}
-					pSpecs, err := pt.Specs()
-					if err != nil {
-						return nil, err
+					if loadErr != nil {
+						unreadable[ref.Peer] = loadErr
+						at.Msg = fmt.Sprintf("%s: peer %q could not be read at %s: %v", ref.Raw, ref.Peer, path, loadErr)
+						out = append(out, at)
+						continue
 					}
-					idx = indexOf(pSpecs)
-					peerIdx[ref.Peer] = idx
 				}
 				ids, ok := idx[ref.Capability]
 				if !ok {
