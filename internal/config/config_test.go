@@ -111,3 +111,45 @@ func TestLoadReadsFile(t *testing.T) {
 		t.Errorf("Modal = %q, want MUST", c.Modal)
 	}
 }
+
+func TestParseDuplicateRule(t *testing.T) {
+	raw := []byte("## Rules\n- shall-clause: off\n- shall-clause: error\n")
+	_, err := Parse(raw)
+	if err == nil {
+		t.Fatal("want error for duplicate rule")
+	}
+	if !strings.Contains(err.Error(), "config.md:3:") {
+		t.Errorf("err = %v, want it to name config.md:3 (the duplicate line)", err)
+	}
+	if !strings.Contains(err.Error(), "line 2") {
+		t.Errorf("err = %v, want it to name line 2 (where first set)", err)
+	}
+}
+
+func TestParseDuplicateVocabularyKey(t *testing.T) {
+	raw := []byte("## Vocabulary\n- modal: MUST\n- modal: SHALL\n")
+	_, err := Parse(raw)
+	if err == nil {
+		t.Fatal("want error for duplicate vocabulary key")
+	}
+	if !strings.Contains(err.Error(), "config.md:3:") {
+		t.Errorf("err = %v, want it to name config.md:3 (the duplicate line)", err)
+	}
+	if !strings.Contains(err.Error(), "line 2") {
+		t.Errorf("err = %v, want it to name line 2 (where first set)", err)
+	}
+}
+
+func TestParseFencedExampleIgnored(t *testing.T) {
+	raw := []byte("## Vocabulary\n- modal: MUST\n\n```\n## Rules\n- shall-clause: off\n```\n")
+	c, err := Parse(raw)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if c.Modal != "MUST" {
+		t.Errorf("Modal = %q, want MUST (unaffected by the fenced example)", c.Modal)
+	}
+	if !c.Rules["shall-clause"] {
+		t.Error("shall-clause should still be on; the fenced example must not turn it off")
+	}
+}

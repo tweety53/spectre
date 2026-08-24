@@ -50,8 +50,8 @@ func Default() Config {
 }
 
 var (
-	bulletRe   = regexp.MustCompile(`^- ([a-z][a-z-]*): (.+)$`)
-	idPrefixRe = regexp.MustCompile(`^[A-Za-z][A-Za-z-]*$`)
+	_bulletRe   = regexp.MustCompile(`^- ([a-z][a-z-]*): (.+)$`)
+	_idPrefixRe = regexp.MustCompile(`^[A-Za-z][A-Za-z-]*$`)
 )
 
 // Load reads <root>/config.md. An absent file is the default configuration.
@@ -67,12 +67,26 @@ func Load(root string) (Config, error) {
 }
 
 // Parse reads a config.md body. Every error names the offending line.
+// Fenced code blocks are skipped, the same convention internal/check uses,
+// so an illustrative example inside a ``` fence never changes a real
+// setting. A key set twice in the same section is an error naming both
+// lines, the same shape tree.Peers uses for a duplicate peer name.
 func Parse(raw []byte) (Config, error) {
 	c := Default()
 	section := ""
+	inFence := false
+	seen := map[string]int{} // "section|key" -> line first set
 	for i, line := range strings.Split(string(raw), "\n") {
 		at := fmt.Sprintf("config.md:%d:", i+1)
 		trimmed := strings.TrimSpace(line)
+
+		if strings.HasPrefix(trimmed, "```") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
 
 		switch {
 		case trimmed == "" || strings.HasPrefix(trimmed, "# "):
@@ -80,23 +94,33 @@ func Parse(raw []byte) (Config, error) {
 		case strings.HasPrefix(trimmed, "## "):
 			section = strings.TrimSpace(strings.TrimPrefix(trimmed, "## "))
 			if section != "Rules" && section != "Vocabulary" && section != "Layout" {
-				return Config{}, fmt.Errorf("%s unknown section %q", at, section)
+				return Config{}, fmt.Errorf("%s unknown section %q, want one of \"Rules\", \"Vocabulary\", \"Layout\"", at, section)
 			}
 			continue
 		case !strings.HasPrefix(trimmed, "- "):
 			continue
 		}
 
-		m := bulletRe.FindStringSubmatch(trimmed)
+		m := _bulletRe.FindStringSubmatch(trimmed)
 		if m == nil {
 			return Config{}, fmt.Errorf("%s malformed setting %q, want \"- <key>: <value>\"", at, trimmed)
 		}
 		key, value := m[1], strings.TrimSpace(m[2])
 
+		seenKey := section + "|" + key
+		if prevLine, dup := seen[seenKey]; dup {
+			noun := "key"
+			if section == "Rules" {
+				noun = "rule"
+			}
+			return Config{}, fmt.Errorf("%s duplicate %s %q (first seen on line %d)", at, noun, key, prevLine)
+		}
+		seen[seenKey] = i + 1
+
 		switch section {
 		case "Rules":
 			if _, known := c.Rules[key]; !known {
-				return Config{}, fmt.Errorf("%s unknown rule %q", at, key)
+				return Config{}, fmt.Errorf("%s unknown rule %q, want one of %s", at, key, strings.Join(RuleNames, ", "))
 			}
 			switch value {
 			case "error":
@@ -114,12 +138,12 @@ func Parse(raw []byte) (Config, error) {
 				}
 				c.Modal = value
 			case "id-prefix":
-				if !idPrefixRe.MatchString(value) {
+				if !_idPrefixRe.MatchString(value) {
 					return Config{}, fmt.Errorf("%s id-prefix must start with a letter and hold only letters and hyphens, got %q", at, value)
 				}
 				c.IDPrefix = value
 			default:
-				return Config{}, fmt.Errorf("%s unknown key %q in Vocabulary", at, key)
+				return Config{}, fmt.Errorf("%s unknown key %q in Vocabulary, want \"modal\" or \"id-prefix\"", at, key)
 			}
 		case "Layout":
 			switch key {
@@ -138,7 +162,7 @@ func Parse(raw []byte) (Config, error) {
 				}
 				c.Extension = value
 			default:
-				return Config{}, fmt.Errorf("%s unknown key %q in Layout", at, key)
+				return Config{}, fmt.Errorf("%s unknown key %q in Layout, want \"specs\", \"changes\" or \"extension\"", at, key)
 			}
 		default:
 			return Config{}, fmt.Errorf("%s setting outside any section", at)
