@@ -16,7 +16,7 @@ func TestDefault(t *testing.T) {
 		t.Errorf("layout = %q/%q/%q", c.SpecsDir, c.ChangesDir, c.Extension)
 	}
 	for _, name := range RuleNames {
-		if !c.Rules[name] {
+		if !c.RuleOn(name) {
 			t.Errorf("rule %q defaults off, want on", name)
 		}
 	}
@@ -42,10 +42,10 @@ func TestParseFull(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
-	if c.Rules["shall-clause"] {
+	if c.RuleOn("shall-clause") {
 		t.Error("shall-clause should be off")
 	}
-	if !c.Rules["placeholders"] || !c.Rules["id-sequence"] {
+	if !c.RuleOn("placeholders") || !c.RuleOn("id-sequence") {
 		t.Error("unmentioned and error rules should be on")
 	}
 	if c.Modal != "MUST" || c.IDPrefix != "REQ-" {
@@ -149,7 +149,7 @@ func TestParseFencedExampleIgnored(t *testing.T) {
 	if c.Modal != "MUST" {
 		t.Errorf("Modal = %q, want MUST (unaffected by the fenced example)", c.Modal)
 	}
-	if !c.Rules["shall-clause"] {
+	if !c.RuleOn("shall-clause") {
 		t.Error("shall-clause should still be on; the fenced example must not turn it off")
 	}
 }

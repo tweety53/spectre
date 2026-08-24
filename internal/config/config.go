@@ -6,6 +6,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -23,14 +24,33 @@ var RuleNames = []string{
 	"refs",
 }
 
-// Config is one tree's settings.
+// Config is one tree's settings. The zero value is not valid — its rules
+// map is nil, so RuleOn reports every rule off; build one with Default or
+// Parse instead.
 type Config struct {
-	Rules      map[string]bool // rule name -> produces findings
+	rules      map[string]bool // rule name -> produces findings; read via RuleOn, changed via WithRule
 	Modal      string
 	IDPrefix   string
 	SpecsDir   string
 	ChangesDir string
 	Extension  string
+}
+
+// RuleOn reports whether name is currently enabled.
+func (c Config) RuleOn(name string) bool {
+	return c.rules[name]
+}
+
+// WithRule returns a copy of c with name's rule set to on. The copy's rule
+// map is cloned, never shared with c's, so mutating it — the only way to
+// change a rule — can never alias back into c or any other copy taken from
+// the same tree. Config's map field is unexported for exactly this reason:
+// "c := t.Cfg; c.rules[name] = v" would otherwise silently mutate t.Cfg's
+// own map, since a Go map copies by reference.
+func (c Config) WithRule(name string, on bool) Config {
+	c.rules = maps.Clone(c.rules)
+	c.rules[name] = on
+	return c
 }
 
 // Default is the configuration of a tree with no config.md.
@@ -40,7 +60,7 @@ func Default() Config {
 		rules[name] = true
 	}
 	return Config{
-		Rules:      rules,
+		rules:      rules,
 		Modal:      "SHALL",
 		IDPrefix:   "R",
 		SpecsDir:   "specs",
@@ -119,14 +139,14 @@ func Parse(raw []byte) (Config, error) {
 
 		switch section {
 		case "Rules":
-			if _, known := c.Rules[key]; !known {
+			if _, known := c.rules[key]; !known {
 				return Config{}, fmt.Errorf("%s unknown rule %q, want one of %s", at, key, strings.Join(RuleNames, ", "))
 			}
 			switch value {
 			case "error":
-				c.Rules[key] = true
+				c.rules[key] = true
 			case "off":
-				c.Rules[key] = false
+				c.rules[key] = false
 			default:
 				return Config{}, fmt.Errorf("%s rule %q: want \"error\" or \"off\", got %q", at, key, value)
 			}

@@ -26,7 +26,7 @@ func TestShallClauseRuleOff(t *testing.T) {
 	if got := msgs(SpecFindings(cfg, "specs/auth.md", specWithoutModal(), []byte(noModalSpec))); !strings.Contains(got, "no SHALL clause") {
 		t.Fatalf("default config should flag it, got:\n%s", got)
 	}
-	cfg.Rules["shall-clause"] = false
+	cfg = cfg.WithRule("shall-clause", false)
 	if got := msgs(SpecFindings(cfg, "specs/auth.md", specWithoutModal(), []byte(noModalSpec))); got != "" {
 		t.Errorf("rule off should be silent, got:\n%s", got)
 	}
@@ -66,9 +66,7 @@ func TestIDPrefixInMessages(t *testing.T) {
 }
 
 func TestPlaceholderAndHeadingRulesOff(t *testing.T) {
-	cfg := config.Default()
-	cfg.Rules["placeholders"] = false
-	cfg.Rules["headings"] = false
+	cfg := config.Default().WithRule("placeholders", false).WithRule("headings", false)
 	raw := []byte("# auth\n\n## Requirements\n- R1: The system SHALL do TODO work.\n")
 	s := model.Spec{Capability: "auth", Reqs: []model.Requirement{{ID: "R1", Num: 1, Text: "The system SHALL do TODO work.", Line: 4}}}
 	if got := msgs(SpecFindings(cfg, "specs/auth.md", s, raw)); got != "" {
@@ -77,8 +75,7 @@ func TestPlaceholderAndHeadingRulesOff(t *testing.T) {
 }
 
 func TestTaskSequenceRuleOff(t *testing.T) {
-	cfg := config.Default()
-	cfg.Rules["task-sequence"] = false
+	cfg := config.Default().WithRule("task-sequence", false)
 	raw := []byte("# Tasks\n\n- [ ] 5. c\n")
 	ts := []model.Task{{Num: 5, Text: "c", Line: 3}}
 	if got := msgs(TaskFindings(cfg, "changes/x/tasks.md", raw, ts)); got != "" {
@@ -93,7 +90,7 @@ func TestMalformedBulletRuleOff(t *testing.T) {
 	if got := msgs(SpecFindings(cfg, "specs/auth.md", s, raw)); !strings.Contains(got, "malformed requirement bullet") {
 		t.Fatalf("default config should flag it, got:\n%s", got)
 	}
-	cfg.Rules["malformed-bullet"] = false
+	cfg = cfg.WithRule("malformed-bullet", false)
 	if got := msgs(SpecFindings(cfg, "specs/auth.md", s, raw)); got != "" {
 		t.Errorf("rule off should be silent, got:\n%s", got)
 	}
@@ -117,7 +114,7 @@ func TestIDSequenceRuleOff(t *testing.T) {
 			t.Fatalf("default config should flag %q, got:\n%s", want, got)
 		}
 	}
-	cfg.Rules["id-sequence"] = false
+	cfg = cfg.WithRule("id-sequence", false)
 	if got := msgs(SpecFindings(cfg, "specs/auth.md", s, raw)); got != "" {
 		t.Errorf("rule off should be silent, got:\n%s", got)
 	}
@@ -147,8 +144,7 @@ func TestRefsRuleOff(t *testing.T) {
 		t.Fatalf("default config should flag the bad ref, got:\n%s", msgs(got))
 	}
 
-	cfg.Rules["refs"] = false
-	tr = tree.At(root, cfg)
+	tr = tree.At(root, cfg.WithRule("refs", false))
 	got, err = Structural(tr, "", nil)
 	if err != nil {
 		t.Fatal(err)

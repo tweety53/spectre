@@ -32,10 +32,10 @@ var _wellFormedTask = regexp.MustCompile(`^- \[[ x]\] \d+\. `)
 // parser cannot read as requirements, which would otherwise vanish silently.
 // Fenced code blocks are skipped, so an example bullet inside a ``` fence
 // is not mistaken for a malformed requirement. The well-formed pattern and
-// the message are built from prefix and modal, this tree's configured id
-// prefix and modal verb, so a bullet using the tree's own vocabulary is
-// never reported as malformed.
-func malformedReqFindings(relPath string, raw []byte, prefix, modal string) []Finding {
+// the message are built from cfg's configured id prefix and modal verb, so
+// a bullet using the tree's own vocabulary is never reported as malformed.
+func malformedReqFindings(cfg config.Config, relPath string, raw []byte) []Finding {
+	prefix, modal := cfg.IDPrefix, cfg.Modal
 	wellFormedReq := regexp.MustCompile(`^- ` + regexp.QuoteMeta(prefix) + `\d+: `)
 	var out []Finding
 	inReqs := false
@@ -104,24 +104,24 @@ func placeholderFindings(relPath string, raw []byte) []Finding {
 // regex-based checks need; s carries the parsed requirements.
 func SpecFindings(cfg config.Config, relPath string, s model.Spec, raw []byte) []Finding {
 	var out []Finding
-	if cfg.Rules["headings"] {
+	if cfg.RuleOn("headings") {
 		want := []string{"# " + s.Capability, "## Purpose", "## Requirements"}
 		out = append(out, headingFindings(relPath, raw, want)...)
 	}
-	if cfg.Rules["placeholders"] {
+	if cfg.RuleOn("placeholders") {
 		out = append(out, placeholderFindings(relPath, raw)...)
 	}
-	if cfg.Rules["malformed-bullet"] {
-		out = append(out, malformedReqFindings(relPath, raw, cfg.IDPrefix, cfg.Modal)...)
+	if cfg.RuleOn("malformed-bullet") {
+		out = append(out, malformedReqFindings(cfg, relPath, raw)...)
 	}
 
 	seen := map[string]bool{}
 	for i, r := range s.Reqs {
-		if cfg.Rules["shall-clause"] && !strings.Contains(r.Text, " "+cfg.Modal+" ") {
+		if cfg.RuleOn("shall-clause") && !strings.Contains(r.Text, " "+cfg.Modal+" ") {
 			msg := fmt.Sprintf("requirement %s has no %s clause", r.ID, cfg.Modal)
 			out = append(out, Finding{File: relPath, Line: r.Line, Msg: msg})
 		}
-		if cfg.Rules["id-sequence"] {
+		if cfg.RuleOn("id-sequence") {
 			if seen[r.ID] {
 				msg := fmt.Sprintf("duplicate requirement id %s", r.ID)
 				out = append(out, Finding{File: relPath, Line: r.Line, Msg: msg})
@@ -138,20 +138,20 @@ func SpecFindings(cfg config.Config, relPath string, s model.Spec, raw []byte) [
 // ProposalFindings applies every proposal rule, under cfg's rule gating.
 func ProposalFindings(cfg config.Config, relPath string, raw []byte) []Finding {
 	var out []Finding
-	if cfg.Rules["headings"] {
+	if cfg.RuleOn("headings") {
 		out = append(out, headingFindings(relPath, raw, []string{"## Why", "## What changes"})...)
 	}
-	if cfg.Rules["placeholders"] {
+	if cfg.RuleOn("placeholders") {
 		out = append(out, placeholderFindings(relPath, raw)...)
 	}
 	return out
 }
 
-// TaskFindings applies every tasks.md rule, gated as one unit on
-// cfg.Rules["task-sequence"]: the malformed-task-line check, duplicate task
+// TaskFindings applies every tasks.md rule, gated as one unit on the
+// "task-sequence" rule: the malformed-task-line check, duplicate task
 // numbers and out-of-sequence task numbers all belong to it.
 func TaskFindings(cfg config.Config, relPath string, raw []byte, ts []model.Task) []Finding {
-	if !cfg.Rules["task-sequence"] {
+	if !cfg.RuleOn("task-sequence") {
 		return nil
 	}
 	var out []Finding
@@ -191,7 +191,7 @@ func Structural(t *tree.Tree, changeID string, peers map[string]tree.ResolvedPee
 			out = append(out, SpecFindings(t.Cfg, rel(t, s.Path), s, s.Raw)...)
 		}
 
-		if t.Cfg.Rules["refs"] {
+		if t.Cfg.RuleOn("refs") {
 			out = append(out, RefFindings(t.Root, specs, peers)...)
 		}
 	}
