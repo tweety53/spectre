@@ -193,9 +193,11 @@ Findings print as `file:line: message`. Exit 0 clean, 1 findings, 2 usage or IO 
 
 - Spec files: `# <name>`, `## Purpose` and `## Requirements` headings present.
 - No `TBD` or `TODO` anywhere in a spec or proposal.
-- Requirement bullets match `- R<n>: … SHALL …`.
+- Requirement bullets match `- R<n>: … SHALL …`; a bullet under `## Requirements` that does not is
+  reported as malformed rather than ignored.
 - Requirement ids unique within a file and gap-free.
-- Task lines match `- [ ] <n>. <text>` or `- [x] <n>. <text>`, numbers unique and ascending.
+- Task lines match `- [ ] <n>. <text>` or `- [x] <n>. <text>`, numbers unique and ascending; a line
+  opening `- [` that does not match is reported as malformed rather than ignored.
 - `proposal.md` has `## Why` and `## What changes`.
 - Every reference resolves by the four checks above.
 
