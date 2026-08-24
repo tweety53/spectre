@@ -155,7 +155,15 @@ func TaskFindings(cfg config.Config, relPath string, raw []byte, ts []model.Task
 		return nil
 	}
 	var out []Finding
+	inFence := false
 	for i, line := range strings.Split(string(raw), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "```") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
 		if strings.HasPrefix(line, "- [") && !_wellFormedTask.MatchString(line) {
 			msg := "malformed task line, want \"- [ ] <n>. ...\""
 			out = append(out, Finding{File: relPath, Line: i + 1, Msg: msg})

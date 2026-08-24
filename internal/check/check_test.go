@@ -163,6 +163,18 @@ func TestTaskFindings(t *testing.T) {
 	}
 }
 
+// TestTaskFindingsIgnoresFencedLine pins the second-round final-review fix:
+// a task-shaped line inside a fenced example must not be reported as
+// malformed, the same fence convention this file's other findings
+// functions already apply.
+func TestTaskFindingsIgnoresFencedLine(t *testing.T) {
+	raw := []byte("# Tasks\n\n- [ ] 1. Real task\n\n```\n- [ ] Not a real task, just an example\n```\n")
+	got := msgs(TaskFindings(config.Default(), "changes/x/tasks.md", raw, []model.Task{{Num: 1, Text: "Real task", Line: 3}}))
+	if got != "" {
+		t.Errorf("want clean, got:\n%s", got)
+	}
+}
+
 func TestTaskFindingsMalformedLine(t *testing.T) {
 	raw := []byte("# Tasks\n\n- [ ] Write the parser\n")
 	got := msgs(TaskFindings(config.Default(), "changes/x/tasks.md", raw, nil))
