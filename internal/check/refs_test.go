@@ -121,6 +121,71 @@ func TestRefFindingsMalformedPeerReference(t *testing.T) {
 	}
 }
 
+// TestRefFindingsCrossTreeDifferentIDPrefix pins the case the config
+// design calls out explicitly: app (default "R" prefix) cites a
+// requirement in its peer gymie, which is configured with a different
+// id prefix ("REQ-"). Each tree parses its own files by its own
+// configuration, and the citation carries gymie's id exactly as
+// written, so the reference must still resolve.
+func TestRefFindingsCrossTreeDifferentIDPrefix(t *testing.T) {
+	parent := t.TempDir()
+	writeTree := func(name, configBody string, specs map[string]string, peers string) string {
+		t.Helper()
+		base := filepath.Join(parent, name)
+		if err := os.MkdirAll(filepath.Join(base, "spectre", "specs"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if configBody != "" {
+			if err := os.WriteFile(filepath.Join(base, "spectre", "config.md"), []byte(configBody), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		for capName, body := range specs {
+			p := filepath.Join(base, "spectre", "specs", capName+".md")
+			if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if peers != "" {
+			if err := os.WriteFile(filepath.Join(base, "spectre", "peers"), []byte(peers), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return base
+	}
+
+	app := writeTree("app", "", map[string]string{
+		"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@gymie:billing#REQ-1).\n",
+	}, "gymie ../gymie\n")
+	writeTree("gymie", "## Vocabulary\n- id-prefix: REQ-\n", map[string]string{
+		"billing": "# billing\n\n## Purpose\nP.\n\n## Requirements\n- REQ-1: The system SHALL d.\n",
+	}, "")
+
+	tr, err := tree.Find(app)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Confirm the reference was actually recognized and extracted, not
+	// silently dropped by a parser anchored to app's own "R" prefix — a
+	// dropped reference and a resolved one both produce zero findings,
+	// so an empty findingsFor result alone would not distinguish them.
+	specs, err := tr.Specs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(specs) != 1 || len(specs[0].Reqs) != 1 || len(specs[0].Reqs[0].Refs) != 1 {
+		t.Fatalf("want one extracted reference, got specs = %+v", specs)
+	}
+	if ref := specs[0].Reqs[0].Refs[0]; ref.Peer != "gymie" || ref.Capability != "billing" || ref.ID != "REQ-1" {
+		t.Errorf("extracted ref = %+v, want peer gymie, capability billing, id REQ-1", ref)
+	}
+
+	if got := findingsFor(t, tr); got != "" {
+		t.Errorf("cross-tree reference to a peer with a different id prefix should resolve, got:\n%s", got)
+	}
+}
+
 func TestRefFindingsPeerUnreadable(t *testing.T) {
 	if os.Getuid() == 0 {
 		t.Skip("running as root: file modes are not enforced")
