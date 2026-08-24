@@ -92,6 +92,10 @@ content.
 fact a tree cannot derive about itself — where its neighbours sit. Paths are relative, so the file
 survives cloning, moving and git worktrees.
 
+A name repeated in `peers` is an error naming both lines, on the same reasoning as `config.md`'s
+closed keys: silently taking the last line would resolve citations against a tree the author did not
+mean. Two different names resolving to one path are an alias, and legal.
+
 Root resolution walks up from the working directory until a `spectre/` directory appears. `--root`
 overrides. With neither, spectre exits 2 naming the directory it searched from.
 
