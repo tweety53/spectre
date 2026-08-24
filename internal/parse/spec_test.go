@@ -94,6 +94,33 @@ func TestRefsScopes(t *testing.T) {
 	}
 }
 
+// TestSpecFileSkipsFencedRequirements pins the final-review fix: a
+// requirement-shaped bullet inside a fenced code block must not be read as
+// a real requirement, the same convention internal/check already applies
+// to headings and the malformed-bullet check.
+func TestSpecFileSkipsFencedRequirements(t *testing.T) {
+	p := writeSpec(t, "# auth\n\n"+
+		"## Purpose\nSessions.\n\n"+
+		"## Requirements\n"+
+		"- R1: The system SHALL refresh the token.\n"+
+		"```\n"+
+		"- R99: This is just an example bullet, not a real requirement.\n"+
+		"```\n"+
+		"- R2: The system SHALL revoke stale tokens.\n")
+
+	parser := New(config.Default())
+	got, err := parser.SpecFile(p)
+	if err != nil {
+		t.Fatalf("SpecFile: %v", err)
+	}
+	if len(got.Reqs) != 2 {
+		t.Fatalf("len(Reqs) = %d, want 2 (R99 inside the fence must be skipped): %+v", len(got.Reqs), got.Reqs)
+	}
+	if got.Reqs[0].ID != "R1" || got.Reqs[1].ID != "R2" {
+		t.Errorf("Reqs = %+v, want R1 then R2 (R99 excluded)", got.Reqs)
+	}
+}
+
 func TestSpecFileMissing(t *testing.T) {
 	parser := New(config.Default())
 	if _, err := parser.SpecFile(filepath.Join(t.TempDir(), "nope.md")); err == nil {

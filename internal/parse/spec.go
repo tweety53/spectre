@@ -27,11 +27,23 @@ func (p *Parser) SpecFile(path string) (model.Spec, error) {
 	var purpose []string
 	section := ""
 	line := 0
+	inFence := false
 	sc := bufio.NewScanner(bytes.NewReader(raw))
 	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	for sc.Scan() {
 		line++
 		t := sc.Text()
+
+		// Fence-aware, the same convention internal/check/check.go uses: a
+		// requirement bullet or heading written as an illustrative example
+		// inside a fenced block must not be read as real content.
+		if strings.HasPrefix(strings.TrimSpace(t), "```") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
 
 		if strings.HasPrefix(t, "## ") {
 			section = strings.TrimSpace(strings.TrimPrefix(t, "## "))
