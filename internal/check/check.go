@@ -160,6 +160,12 @@ func Structural(t *tree.Tree, changeID string) ([]Finding, error) {
 			}
 			out = append(out, SpecFindings(rel(t, s.Path), s, raw)...)
 		}
+
+		refFindings, err := RefFindings(t, specs)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, refFindings...)
 	}
 
 	changes, err := t.Changes(false)
