@@ -69,8 +69,10 @@ func TestArchiveForce(t *testing.T) {
 
 func TestArchiveUnknownChange(t *testing.T) {
 	var out, errBuf bytes.Buffer
-	if code := Archive([]string{"--root", gitTree(t), "nope"}, &out, &errBuf); code != Fail {
-		t.Fatalf("exit = %d, want %d", code, Fail)
+	// An unknown change id is a wrong invocation, not a findings/content
+	// refusal, so it exits Usage (2), not Fail (1).
+	if code := Archive([]string{"--root", gitTree(t), "nope"}, &out, &errBuf); code != Usage {
+		t.Fatalf("exit = %d, want %d", code, Usage)
 	}
 	if !strings.Contains(errBuf.String(), "no open change \"nope\"") {
 		t.Errorf("stderr = %q", errBuf.String())

@@ -42,6 +42,22 @@ func TestValidateReportsFindings(t *testing.T) {
 	}
 }
 
+func TestValidateUnknownChange(t *testing.T) {
+	var out, errBuf bytes.Buffer
+	// A typo'd change id must not read as success: it exits Usage (2), not
+	// OK, and must not print "no findings".
+	code := Validate([]string{"--root", seedTree(t), "typo-of-my-change-id"}, &out, &errBuf)
+	if code != Usage {
+		t.Fatalf("exit = %d, want %d", code, Usage)
+	}
+	if strings.Contains(out.String(), "no findings") {
+		t.Errorf("stdout = %q, must not read a missing change as success", out.String())
+	}
+	if !strings.Contains(errBuf.String(), "no such change \"typo-of-my-change-id\"") {
+		t.Errorf("stderr = %q", errBuf.String())
+	}
+}
+
 func TestValidateSingleChange(t *testing.T) {
 	base := seedTree(t)
 	dir := filepath.Join(base, "spectre", "changes", "kan-1-first")

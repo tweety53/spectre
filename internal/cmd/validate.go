@@ -23,7 +23,20 @@ func Validate(args []string, stdout, stderr io.Writer) int {
 		return Usage
 	}
 
-	findings, err := check.Structural(t, fs.Arg(0))
+	changeID := fs.Arg(0)
+	if changeID != "" {
+		changes, err := t.Changes(false)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return Usage
+		}
+		if !hasChange(changes, changeID) {
+			fmt.Fprintf(stderr, "no such change %q in %s\n", changeID, t.ChangesDir())
+			return Usage
+		}
+	}
+
+	findings, err := check.Structural(t, changeID)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return Usage

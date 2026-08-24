@@ -73,5 +73,5 @@ func Archive(args []string, stdout, stderr io.Writer) int {
 	}
 
 	fmt.Fprintf(stderr, "no open change %q in %s\n", id, t.ChangesDir())
-	return Fail
+	return Usage
 }

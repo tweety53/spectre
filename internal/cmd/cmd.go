@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/tweety53/spectre/internal/model"
 	"github.com/tweety53/spectre/internal/tree"
 )
 
@@ -36,4 +37,14 @@ func resolve(root string) (*tree.Tree, error) {
 		return nil, err
 	}
 	return tree.Find(wd)
+}
+
+// hasChange reports whether id names one of changes.
+func hasChange(changes []model.Change, id string) bool {
+	for _, c := range changes {
+		if c.ID == id {
+			return true
+		}
+	}
+	return false
 }
