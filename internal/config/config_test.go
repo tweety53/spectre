@@ -140,6 +140,21 @@ func TestParseDuplicateVocabularyKey(t *testing.T) {
 	}
 }
 
+// TestParseUnterminatedFenceErrors pins the final-review fix: an unclosed
+// fence must not silently drop every setting after it (demonstrated live:
+// an unclosed fence caused "- modal: MUST" to vanish, producing a false
+// SHALL finding). Parse must error naming the line the fence opened.
+func TestParseUnterminatedFenceErrors(t *testing.T) {
+	raw := []byte("## Vocabulary\n```\nan example\n\n- modal: MUST\n")
+	_, err := Parse(raw)
+	if err == nil {
+		t.Fatal("want error for an unterminated fence")
+	}
+	if !strings.Contains(err.Error(), "config.md:2:") {
+		t.Errorf("err = %v, want it to name config.md:2 (where the fence opened)", err)
+	}
+}
+
 func TestParseFencedExampleIgnored(t *testing.T) {
 	raw := []byte("## Vocabulary\n- modal: MUST\n\n```\n## Rules\n- shall-clause: off\n```\n")
 	c, err := Parse(raw)

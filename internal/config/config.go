@@ -95,6 +95,7 @@ func Parse(raw []byte) (Config, error) {
 	c := Default()
 	section := ""
 	inFence := false
+	fenceLine := 0
 	seen := map[string]int{} // "section|key" -> line first set
 	for i, line := range strings.Split(string(raw), "\n") {
 		at := fmt.Sprintf("config.md:%d:", i+1)
@@ -102,6 +103,9 @@ func Parse(raw []byte) (Config, error) {
 
 		if strings.HasPrefix(trimmed, "```") {
 			inFence = !inFence
+			if inFence {
+				fenceLine = i + 1
+			}
 			continue
 		}
 		if inFence {
@@ -187,6 +191,13 @@ func Parse(raw []byte) (Config, error) {
 		default:
 			return Config{}, fmt.Errorf("%s setting outside any section", at)
 		}
+	}
+	// An unterminated fence would otherwise silently drop every setting
+	// after it — a config file is exactly the file this package exists to
+	// read faithfully, so this is an error, not a warning, naming the line
+	// the fence opened.
+	if inFence {
+		return Config{}, fmt.Errorf("config.md:%d: unterminated fenced code block (opened here, never closed)", fenceLine)
 	}
 	return c, nil
 }
