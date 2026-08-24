@@ -54,13 +54,16 @@ func Refs(args []string, stdout, stderr io.Writer) int {
 		case tree.PeerUnreadable:
 			scanned = append(scanned, fmt.Sprintf("%s (unreadable: %s)", name, rp.Err))
 			continue
-		}
-		theirPeers, err := rp.Tree.Peers()
-		if err != nil {
-			scanned = append(scanned, fmt.Sprintf("%s (unreadable: %s)", name, err))
+		case tree.PeerFound:
+			// fall through to processing below.
+		default:
+			// Defensive: any resolution this switch doesn't know about is
+			// treated as unreadable, never as found — rp.Tree is only
+			// guaranteed non-nil for PeerFound.
+			scanned = append(scanned, fmt.Sprintf("%s (unreadable: %s)", name, rp.Resolution))
 			continue
 		}
-		pSpecs, err := rp.Tree.Specs()
+		theirPeers, err := rp.Tree.Peers()
 		if err != nil {
 			scanned = append(scanned, fmt.Sprintf("%s (unreadable: %s)", name, err))
 			continue
@@ -69,12 +72,12 @@ func Refs(args []string, stdout, stderr io.Writer) int {
 		sources = append(sources, check.PeerCitationSource{
 			Name:     name,
 			Root:     rp.Tree.Root,
-			Specs:    pSpecs,
+			Specs:    rp.Specs,
 			OurNames: tree.NamesFor(theirPeers, t.Root),
 		})
 	}
 
-	citations := check.Citations(t, capName, reqID, specs, sources)
+	citations := check.Citations(t.Root, capName, reqID, specs, sources)
 	for _, c := range citations {
 		prefix := ""
 		if c.Peer != "" {

@@ -153,8 +153,10 @@ func TaskFindings(relPath string, raw []byte, ts []model.Task) []Finding {
 }
 
 // Structural checks every spec and change in the tree, or one change when
-// changeID is non-empty.
-func Structural(t *tree.Tree, changeID string) ([]Finding, error) {
+// changeID is non-empty. peers is this tree's declared peers, already
+// resolved (see tree.ResolvePeer); it is only consulted when changeID is
+// empty, and may be nil otherwise.
+func Structural(t *tree.Tree, changeID string, peers map[string]tree.ResolvedPeer) ([]Finding, error) {
 	var out []Finding
 
 	if changeID == "" {
@@ -166,11 +168,7 @@ func Structural(t *tree.Tree, changeID string) ([]Finding, error) {
 			out = append(out, SpecFindings(rel(t, s.Path), s)...)
 		}
 
-		refFindings, err := RefFindings(t, specs)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, refFindings...)
+		out = append(out, RefFindings(t.Root, specs, peers)...)
 	}
 
 	changes, err := t.Changes()
@@ -205,11 +203,16 @@ func Structural(t *tree.Tree, changeID string) ([]Finding, error) {
 	return out, nil
 }
 
-// rel returns path relative to the tree root, falling back to path itself
-// on the (unreachable in practice) case that path isn't a descendant of
-// t.Root — every path passed in is always constructed from t.Root.
+// rel returns path relative to t's root; see relTo.
 func rel(t *tree.Tree, path string) string {
-	r, err := filepath.Rel(t.Root, path)
+	return relTo(t.Root, path)
+}
+
+// relTo returns path relative to root, falling back to path itself on the
+// (unreachable in practice) case that path isn't a descendant of root —
+// every path passed in is always constructed from the tree's own root.
+func relTo(root, path string) string {
+	r, err := filepath.Rel(root, path)
 	if err != nil {
 		return path
 	}

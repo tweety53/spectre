@@ -18,7 +18,7 @@ func TestCitationsThisTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := Citations(tr, "auth", "R1", specs, nil)
+	got := Citations(tr.Root, "auth", "R1", specs, nil)
 	if len(got) != 1 || got[0].Path != "specs/plans.md" || got[0].From != "R1" {
 		t.Errorf("got %+v", got)
 	}
@@ -44,7 +44,7 @@ func TestCitationsPeer(t *testing.T) {
 		Specs:    peerSpecs,
 		OurNames: map[string]bool{"app": true},
 	}}
-	got := Citations(tr, "auth", "R1", specs, sources)
+	got := Citations(tr.Root, "auth", "R1", specs, sources)
 	if len(got) != 1 || got[0].Peer != "gymie" || got[0].Path != "specs/billing.md" {
 		t.Errorf("got %+v", got)
 	}
@@ -58,7 +58,7 @@ func TestCitationsNone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := Citations(tr, "auth", "R1", specs, nil); len(got) != 0 {
+	if got := Citations(tr.Root, "auth", "R1", specs, nil); len(got) != 0 {
 		t.Errorf("got %+v", got)
 	}
 }

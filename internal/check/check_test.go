@@ -128,7 +128,7 @@ func TestStructuralMissingTasks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := Structural(tr, "")
+	got, err := Structural(tr, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

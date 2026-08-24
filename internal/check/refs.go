@@ -22,22 +22,20 @@ func indexOf(specs []model.Spec) index {
 	return idx
 }
 
-// RefFindings resolves every reference in specs against this tree and its
-// declared peers.
-func RefFindings(t *tree.Tree, specs []model.Spec) ([]Finding, error) {
-	peers, err := t.Peers()
-	if err != nil {
-		return nil, err
-	}
+// RefFindings resolves every reference in specs against this tree (root)
+// and peers, keyed by declared peer name and already resolved — Resolution
+// == PeerFound entries carry their specs, PeerNotPresent/PeerUnreadable
+// entries carry their classification. RefFindings does no I/O of its own:
+// a name absent from peers is treated as not declared.
+func RefFindings(root string, specs []model.Spec, peers map[string]tree.ResolvedPeer) []Finding {
 	self := indexOf(specs)
-	peerIdx := map[string]index{}              // peer name -> its index
-	resolved := map[string]tree.ResolvedPeer{} // peer name -> its resolution, cached
+	peerIdx := map[string]index{} // peer name -> its index, built lazily from rp.Specs
 
 	var out []Finding
 	for _, s := range specs {
 		for _, r := range s.Reqs {
 			for _, ref := range r.Refs {
-				at := Finding{File: rel(t, s.Path), Line: ref.Line}
+				at := Finding{File: relTo(root, s.Path), Line: ref.Line}
 
 				if ref.Peer == "" {
 					capName := ref.Capability
@@ -63,16 +61,13 @@ func RefFindings(t *tree.Tree, specs []model.Spec) ([]Finding, error) {
 					continue
 				}
 
-				rp, cached := resolved[ref.Peer]
-				if !cached {
-					rp = tree.ResolvePeer(peers, ref.Peer)
-					resolved[ref.Peer] = rp
-				}
-				switch rp.Resolution {
-				case tree.PeerNotDeclared:
+				rp, declared := peers[ref.Peer]
+				if !declared {
 					at.Msg = fmt.Sprintf("%s: peer %q is not declared in peers", ref.Raw, ref.Peer)
 					out = append(out, at)
 					continue
+				}
+				switch rp.Resolution {
 				case tree.PeerNotPresent:
 					at.Msg = fmt.Sprintf("%s: peer %q is declared but its tree is not present at %s",
 						ref.Raw, ref.Peer, rp.Path)
@@ -85,19 +80,9 @@ func RefFindings(t *tree.Tree, specs []model.Spec) ([]Finding, error) {
 					continue
 				}
 
-				idx, loaded := peerIdx[ref.Peer]
-				if !loaded {
-					pSpecs, err := rp.Tree.Specs()
-					if err != nil {
-						resolved[ref.Peer] = tree.ResolvedPeer{
-							Name: ref.Peer, Path: rp.Path, Resolution: tree.PeerUnreadable, Err: err,
-						}
-						at.Msg = fmt.Sprintf("%s: peer %q could not be read at %s: %v",
-							ref.Raw, ref.Peer, rp.Path, err)
-						out = append(out, at)
-						continue
-					}
-					idx = indexOf(pSpecs)
+				idx, cached := peerIdx[ref.Peer]
+				if !cached {
+					idx = indexOf(rp.Specs)
 					peerIdx[ref.Peer] = idx
 				}
 				ids, ok := idx[ref.Capability]
@@ -114,5 +99,5 @@ func RefFindings(t *tree.Tree, specs []model.Spec) ([]Finding, error) {
 			}
 		}
 	}
-	return out, nil
+	return out
 }

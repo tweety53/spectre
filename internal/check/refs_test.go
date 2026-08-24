@@ -30,11 +30,23 @@ func findingsFor(t *testing.T, tr *tree.Tree) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := RefFindings(tr, specs)
+	got := RefFindings(tr.Root, specs, resolvePeers(t, tr))
+	return msgs(got)
+}
+
+// resolvePeers mirrors what cmd.Validate does: resolve every declared peer
+// name before calling the pure RefFindings.
+func resolvePeers(t *testing.T, tr *tree.Tree) map[string]tree.ResolvedPeer {
+	t.Helper()
+	peers, err := tr.Peers()
 	if err != nil {
 		t.Fatal(err)
 	}
-	return msgs(got)
+	resolved := map[string]tree.ResolvedPeer{}
+	for name := range peers {
+		resolved[name] = tree.ResolvePeer(peers, name)
+	}
+	return resolved
 }
 
 func TestRefFindingsResolves(t *testing.T) {
@@ -123,15 +135,7 @@ func TestRefFindingsPeerUnreadable(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(specPath, 0o644) })
 
-	specs, err := tr.Specs()
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := RefFindings(tr, specs)
-	if err != nil {
-		t.Fatalf("want nil error, got %v", err)
-	}
-	if msg := msgs(got); !strings.Contains(msg, "peer \"gymie\" could not be read at") {
-		t.Errorf("got:\n%s", msg)
+	if got := findingsFor(t, tr); !strings.Contains(got, "peer \"gymie\" could not be read at") {
+		t.Errorf("got:\n%s", got)
 	}
 }

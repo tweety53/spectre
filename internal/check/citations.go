@@ -1,10 +1,7 @@
 package check
 
 import (
-	"path/filepath"
-
 	"github.com/tweety53/spectre/internal/model"
-	"github.com/tweety53/spectre/internal/tree"
 )
 
 // Citation is one place a requirement is cited from.
@@ -28,9 +25,11 @@ type PeerCitationSource struct {
 
 // Citations finds every citation of capability#id: in this tree's specs
 // (a same-file or same-tree reference resolving to it), and in each peer
-// source (a reference naming this tree by any of its OurNames).
+// source (a reference naming this tree by any of its OurNames). root is
+// this tree's absolute root, used only to render display paths — Citations
+// performs no I/O of its own.
 func Citations(
-	t *tree.Tree, capName, reqID string, specs []model.Spec, peers []PeerCitationSource,
+	root, capName, reqID string, specs []model.Spec, peers []PeerCitationSource,
 ) []Citation {
 	var out []Citation
 	for _, s := range specs {
@@ -40,7 +39,7 @@ func Citations(
 					continue
 				}
 				if ref.Capability == capName || (ref.Capability == "" && s.Capability == capName) {
-					out = append(out, Citation{Path: rel(t, s.Path), Line: ref.Line, From: r.ID, Raw: ref.Raw})
+					out = append(out, Citation{Path: relTo(root, s.Path), Line: ref.Line, From: r.ID, Raw: ref.Raw})
 				}
 			}
 		}
@@ -50,11 +49,9 @@ func Citations(
 			for _, r := range s.Reqs {
 				for _, ref := range r.Refs {
 					if p.OurNames[ref.Peer] && ref.Capability == capName && ref.ID == reqID {
-						rp, err := filepath.Rel(p.Root, s.Path)
-						if err != nil {
-							rp = s.Path
-						}
-						out = append(out, Citation{Peer: p.Name, Path: rp, Line: ref.Line, From: r.ID, Raw: ref.Raw})
+						out = append(out, Citation{
+							Peer: p.Name, Path: relTo(p.Root, s.Path), Line: ref.Line, From: r.ID, Raw: ref.Raw,
+						})
 					}
 				}
 			}

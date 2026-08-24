@@ -49,3 +49,14 @@ func hasChange(changes []model.Change, id string) bool {
 	}
 	return false
 }
+
+// resolvePeers resolves every name declared in peers, so callers pass
+// already-resolved peers into check's pure functions instead of those
+// functions resolving peers themselves.
+func resolvePeers(peers map[string]string) map[string]tree.ResolvedPeer {
+	resolved := make(map[string]tree.ResolvedPeer, len(peers))
+	for name := range peers {
+		resolved[name] = tree.ResolvePeer(peers, name)
+	}
+	return resolved
+}

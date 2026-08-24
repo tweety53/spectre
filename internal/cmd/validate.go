@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/tweety53/spectre/internal/check"
+	"github.com/tweety53/spectre/internal/tree"
 )
 
 // Validate checks the whole tree, or one change when an id is given.
@@ -36,7 +37,19 @@ func Validate(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	findings, err := check.Structural(t, changeID)
+	// Ref checking only runs for a whole-tree validate (changeID == ""), so
+	// only resolve peers in that case.
+	var peers map[string]tree.ResolvedPeer
+	if changeID == "" {
+		declared, err := t.Peers()
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return Usage
+		}
+		peers = resolvePeers(declared)
+	}
+
+	findings, err := check.Structural(t, changeID, peers)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return Usage
