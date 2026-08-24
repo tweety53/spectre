@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/tweety53/spectre/internal/tree"
 )
 
 // openspecTree builds a small OpenSpec tree and returns its directory.
@@ -339,6 +341,56 @@ func TestMigrateHonorsTargetIDPrefix(t *testing.T) {
 	}
 	if strings.Contains(stdout.String(), "malformed requirement bullet") {
 		t.Errorf("migrate's own validation pass rejected its REQ- output:\n%s", stdout.String())
+	}
+}
+
+// TestMigrateOutBasenameNotSpectreIsStillOpenable pins the fix-round
+// finding: migrate used to write specs/ and changes/ directly under
+// whatever --out named, while tree.Open (and therefore every other
+// command's --root) appends "spectre" unless the given path's basename is
+// already "spectre" — so a --out not literally named "spectre" produced a
+// tree no other command could ever open again. migrate must resolve its
+// destination the same way tree.Open resolves a root, so passing that same
+// --out value as --root to any other command finds the tree it wrote.
+func TestMigrateOutBasenameNotSpectreIsStillOpenable(t *testing.T) {
+	src := openspecTree(t)
+	out := filepath.Join(t.TempDir(), "my-project") // basename is not "spectre"
+
+	var stdout, stderr bytes.Buffer
+	if code := Migrate([]string{"--out", out, src}, &stdout, &stderr); code != OK {
+		t.Fatalf("exit = %d\nstdout: %s\nstderr: %s", code, stdout.String(), stderr.String())
+	}
+
+	resolved := filepath.Join(out, "spectre")
+	if _, err := os.Stat(filepath.Join(resolved, "specs", "auth.md")); err != nil {
+		t.Fatalf("expected the tree written under %s/spectre, not directly under %s: %v", out, out, err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "specs")); !os.IsNotExist(err) {
+		t.Errorf("tree written directly under --out instead of --out/spectre")
+	}
+
+	// The report must name the path actually written, not the --out value
+	// as given, so what the user sees is what they can then open.
+	if !strings.Contains(stdout.String(), resolved) {
+		t.Errorf("report = %q, want it to name the resolved path %q", stdout.String(), resolved)
+	}
+
+	// tree.Open must be able to open the SAME --out value passed to
+	// migrate — this is the whole point of the fix: --root <out> now works
+	// after migrate --out <out>, for any <out> regardless of its basename.
+	got, err := tree.Open(out)
+	if err != nil {
+		t.Fatalf("tree.Open(%q) after migrate --out %q: %v", out, out, err)
+	}
+	if got.Root != resolved {
+		t.Errorf("tree.Open(%q).Root = %q, want %q", out, got.Root, resolved)
+	}
+	specs, err := got.Specs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(specs) != 1 || specs[0].Capability != "auth" {
+		t.Errorf("specs read back through tree.Open = %+v, want one capability \"auth\"", specs)
 	}
 }
 

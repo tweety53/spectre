@@ -45,6 +45,24 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 		dst = filepath.Join(wd, "spectre")
 	}
 
+	// Resolve dst exactly as tree.Open resolves a --root: when the given
+	// path's basename isn't literally "spectre", append "spectre" to it.
+	// Every other command's root resolution already does this, so writing
+	// straight into a differently named --out would produce a tree no
+	// other command could then open by passing that same --out value as
+	// --root — an internal inconsistency between this command's write path
+	// and every other command's read path, not something the caller should
+	// have to work around by always naming the target "spectre" themselves.
+	absDst, err := filepath.Abs(dst)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return Usage
+	}
+	if filepath.Base(absDst) != "spectre" {
+		absDst = filepath.Join(absDst, "spectre")
+	}
+	dst = absDst
+
 	// Stat the source before touching the destination at all: checking dst
 	// first meant a mistyped src with an existing dst reported "<dst>
 	// already exists (use --force to write into it)", pointing the user at
