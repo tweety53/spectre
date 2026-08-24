@@ -5,6 +5,7 @@ package render
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/tweety53/spectre/internal/model"
 )
@@ -12,12 +13,19 @@ import (
 // Spec renders one capability file.
 func Spec(s model.Spec) []byte {
 	var b bytes.Buffer
-	fmt.Fprintf(&b, "# %s\n\n## Purpose\n%s\n\n## Requirements\n", s.Capability, s.Purpose)
+	fmt.Fprintf(&b, "# %s\n\n## Purpose\n%s\n\n## Requirements\n", collapseNewlines(s.Capability), s.Purpose)
 	for _, r := range s.Reqs {
-		fmt.Fprintf(&b, "- %s: %s\n", r.ID, r.Text)
+		fmt.Fprintf(&b, "- %s: %s\n", r.ID, collapseNewlines(r.Text))
 		for _, n := range r.Notes {
-			fmt.Fprintf(&b, "  %s\n", n)
+			for _, line := range strings.Split(n, "\n") {
+				fmt.Fprintf(&b, "  %s\n", line)
+			}
 		}
 	}
 	return b.Bytes()
+}
+
+// collapseNewlines replaces all newlines with single spaces.
+func collapseNewlines(s string) string {
+	return strings.ReplaceAll(s, "\n", " ")
 }
