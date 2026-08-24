@@ -18,7 +18,9 @@ func Spec(s model.Spec) []byte {
 		fmt.Fprintf(&b, "- %s: %s\n", r.ID, collapseNewlines(r.Text))
 		for _, n := range r.Notes {
 			for _, line := range strings.Split(n, "\n") {
-				fmt.Fprintf(&b, "  %s\n", line)
+				if strings.TrimSpace(line) != "" {
+					fmt.Fprintf(&b, "  %s\n", line)
+				}
 			}
 		}
 	}

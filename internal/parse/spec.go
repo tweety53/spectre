@@ -55,9 +55,12 @@ func SpecFile(path string) (model.Spec, error) {
 				})
 				continue
 			}
-			if note := strings.TrimSpace(t); note != "" && len(spec.Reqs) > 0 && strings.HasPrefix(t, "  ") {
-				last := &spec.Reqs[len(spec.Reqs)-1]
-				last.Notes = append(last.Notes, note)
+			if strings.HasPrefix(t, "  ") && len(spec.Reqs) > 0 {
+				note := strings.TrimPrefix(t, "  ")
+				if strings.TrimSpace(note) != "" {
+					last := &spec.Reqs[len(spec.Reqs)-1]
+					last.Notes = append(last.Notes, note)
+				}
 			}
 		}
 	}
