@@ -18,6 +18,7 @@ commands:
   validate [change-id]         check the tree, or one change
   refs <capability>#<id>       find citations of a requirement
   archive <change-id>          move a finished change into changes/archive/
+  migrate <openspec-dir>       convert an OpenSpec tree into a new spectre tree
 
 every command accepts --root <path> to name the tree explicitly
 `
@@ -39,6 +40,8 @@ func main() {
 		os.Exit(cmd.Refs(args, os.Stdout, os.Stderr))
 	case "archive":
 		os.Exit(cmd.Archive(args, os.Stdout, os.Stderr))
+	case "migrate":
+		os.Exit(cmd.Migrate(args, os.Stdout, os.Stderr))
 	case "-h", "--help", "help":
 		fmt.Fprint(os.Stdout, _usage)
 		os.Exit(cmd.OK)
