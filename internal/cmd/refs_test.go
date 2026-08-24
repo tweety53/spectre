@@ -95,6 +95,37 @@ func TestRefsPeerBadPeersFile(t *testing.T) {
 	}
 }
 
+func TestRefsPeerUnreadablePath(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores file permissions")
+	}
+	base := twoTreesCmd(t)
+	// Block traversal into gymie itself, a different failure mode than
+	// TestRefsPeerUnreadableSpec's chmod of one file inside an otherwise
+	// reachable tree: this makes Stat(gymie/spectre) fail with a
+	// permission error rather than not-exist.
+	gymieDir := filepath.Join(filepath.Dir(base), "gymie")
+	if err := os.Chmod(gymieDir, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(gymieDir, 0o755) })
+
+	var out, errBuf bytes.Buffer
+	if code := Refs([]string{"--root", base, "auth#R1"}, &out, &errBuf); code != OK {
+		t.Fatalf("exit = %d, stderr = %s", code, errBuf.String())
+	}
+	got := out.String()
+	if !strings.Contains(got, "specs/plans.md:8: R2 cites @auth#R1") {
+		t.Errorf("missing local citation in:\n%s", got)
+	}
+	if !strings.Contains(got, "gymie (unreadable:") {
+		t.Errorf("missing unreadable marker in:\n%s, want unreadable not not-present", got)
+	}
+	if strings.Contains(got, "gymie (not present)") {
+		t.Errorf("got %q, a permission error must not be reported as not present", got)
+	}
+}
+
 func TestRefsPeerUnreadableSpec(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores file permissions")
