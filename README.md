@@ -11,10 +11,14 @@ go install github.com/tweety53/spectre/cmd/spectre@latest
 
 ## Getting started
 
+A spectre tree lives inside a git repository: `archive` moves a finished change with `git mv`, so
+both the repository and the change's files have to exist in git before you can archive anything.
+
 There is no `init` command. A tree is a plain directory named `spectre` holding `specs/` and
 `changes/`, and you make it by hand:
 
 ```bash
+git init                              # if this isn't already a git repository
 mkdir -p spectre/specs spectre/changes
 ```
 
@@ -24,6 +28,13 @@ only scaffold changes inside one:
 ```bash
 spectre new my-change
 # created spectre/changes/my-change
+```
+
+Stage what `new` wrote — and every file you add or edit inside the tree afterwards — so `archive`
+has something to move later:
+
+```bash
+git add spectre
 ```
 
 Every command searches upwards from the working directory for a directory literally named
@@ -77,12 +88,14 @@ Sessions and tokens.
 ## Requirements
 - R1: The system SHALL refresh the session token before expiry.
   Indented prose beneath a bullet is free-form and preserved.
-- R2: The picker SHALL show only enabled plans (@gymie:plans#R7)
+- R2: The picker SHALL show only enabled plans (@R1)
 ```
 
 Requirement ids are `R<n>` by default (configurable, see below), unique within the file and
 gap-free. They are stable once written: other trees cite them, and renumbering makes those
-citations dangle.
+citations dangle. `(@R1)` above cites a requirement in this same file — see the next section for
+the other two citation forms, which cite a capability or a peer tree and only resolve once that
+capability, or a `peers` entry for that peer, actually exists.
 
 ## References across trees
 
@@ -131,7 +144,8 @@ error naming both lines. Two different names resolving to the same path is legal
 
 ## Vocabulary
 - modal: SHALL             # the verb a requirement bullet must carry
-- id-prefix: R              # so REQ-1 is as legal as R1
+- id-prefix: R              # replaces the accepted prefix entirely — "id-prefix: REQ-" makes
+                             # REQ-1 legal and R1 no longer legal, not both at once
 
 ## Layout
 - specs: specs              # relative to the tree root
@@ -154,8 +168,12 @@ What `new` scaffolds is not configurable; it is compiled into the binary.
 spectre archive <change-id>
 ```
 
-`git mv`s a finished change into `changes/archive/`. It does not commit. It refuses three content
-problems, each overridable with `--force`:
+`git mv`s a finished change into `changes/archive/`. It does not commit. This means the tree has to
+be inside a git repository with the change's files already tracked (`git add`) — if either isn't
+true, `git mv`'s own error is prefixed with that requirement and the command exits 2, since this is
+an environment problem rather than one of the content refusals below.
+
+It refuses three content problems, each overridable with `--force`:
 
 - no `tasks.md`
 - `tasks.md` with no tasks at all
@@ -170,12 +188,14 @@ by `--force`; the collision has to be resolved by hand.
 spectre migrate [--out <dir>] [--force] <openspec-dir>
 ```
 
-Converts an existing OpenSpec tree into a new spectre tree, written to `--out` (default:
-`./spectre` in the working directory — name it `spectre` unless you have a reason not to, since
-every other command only recognizes a directory with that exact name). It is **non-destructive**:
-it never modifies or deletes the OpenSpec tree it reads. Re-running it against an existing target
-fails unless `--force` is given, which clears that target's `specs/` and `changes/` before writing
-— nothing else in the target is touched.
+Converts an existing OpenSpec tree into a new spectre tree, written to `--out` (default: `./spectre`
+in the working directory). `--out` is resolved the same way every other command resolves `--root`:
+if its basename isn't literally `spectre`, spectre writes to `<out>/spectre` instead of `<out>`
+directly, and the report line names the path actually written — so passing that same `--out` value
+as `--root` to any other command always finds the tree `migrate` produced. It is
+**non-destructive**: it never modifies or deletes the OpenSpec tree it reads. Re-running it against
+an existing target fails unless `--force` is given, which clears that target's `specs/` and
+`changes/` before writing — nothing else in the target is touched.
 
 Conversions:
 
