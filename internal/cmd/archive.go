@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -41,7 +42,7 @@ func Archive(args []string, stdout, stderr io.Writer) int {
 		if c.ID != id {
 			continue
 		}
-		if _, err := os.Stat(filepath.Join(c.Dir, "tasks.md")); os.IsNotExist(err) && !*force {
+		if _, err := os.Stat(filepath.Join(c.Dir, "tasks.md")); errors.Is(err, os.ErrNotExist) && !*force {
 			fmt.Fprintf(stderr, "%s: no tasks.md (use --force to archive anyway)\n", id)
 			return Fail
 		}
@@ -49,11 +50,18 @@ func Archive(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "%s: %d of %d tasks are unchecked (use --force to archive anyway)\n", id, left, len(c.Tasks))
 			return Fail
 		}
+		dst := filepath.Join(t.ArchiveDir(), id)
+		if _, err := os.Stat(dst); err == nil {
+			fmt.Fprintf(stderr, "%s: destination %s already exists\n", id, dst)
+			return Fail
+		} else if !errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintln(stderr, err)
+			return Usage
+		}
 		if err := os.MkdirAll(t.ArchiveDir(), 0o755); err != nil {
 			fmt.Fprintln(stderr, err)
 			return Usage
 		}
-		dst := filepath.Join(t.ArchiveDir(), id)
 		mv := exec.Command("git", "mv", c.Dir, dst)
 		mv.Dir = t.Root
 		if out, err := mv.CombinedOutput(); err != nil {

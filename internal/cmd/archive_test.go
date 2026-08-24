@@ -120,6 +120,41 @@ func TestArchiveRefusesMissingTasksFile(t *testing.T) {
 	}
 }
 
+func TestArchiveRefusesDestinationCollision(t *testing.T) {
+	base := gitTree(t)
+	tasks := filepath.Join(base, "spectre", "changes", "kan-1-first", "tasks.md")
+	if err := os.WriteFile(tasks, []byte("# Tasks\n\n- [x] 1. One\n- [x] 2. Two\n- [x] 3. Three\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dst := filepath.Join(base, "spectre", "changes", "archive", "kan-1-first")
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sentinel := filepath.Join(dst, "sentinel.txt")
+	if err := os.WriteFile(sentinel, []byte("already archived\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out, errBuf bytes.Buffer
+	// --force must not override a destination collision: it means "archive
+	// despite unfinished work", not "overwrite an existing archived change".
+	if code := Archive([]string{"--root", base, "--force", "kan-1-first"}, &out, &errBuf); code != Fail {
+		t.Fatalf("exit = %d, want %d, stderr = %s", code, Fail, errBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), dst) {
+		t.Errorf("stderr = %q, want it to name the destination %q", errBuf.String(), dst)
+	}
+	if _, err := os.Stat(filepath.Join(base, "spectre", "changes", "kan-1-first")); err != nil {
+		t.Fatalf("source folder should not have moved: %v", err)
+	}
+	if body, err := os.ReadFile(sentinel); err != nil || string(body) != "already archived\n" {
+		t.Fatalf("existing archived folder was disturbed: body=%q, err=%v", body, err)
+	}
+	if _, err := os.Stat(filepath.Join(dst, "kan-1-first")); !os.IsNotExist(err) {
+		t.Error("change was nested into the existing archived folder instead of being refused")
+	}
+}
+
 func TestArchiveForceOverridesMissingTasksFile(t *testing.T) {
 	base := gitTreeNoTasks(t)
 	var out, errBuf bytes.Buffer
