@@ -49,6 +49,15 @@ func Archive(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "%s: no tasks.md (use --force to archive anyway)\n", id)
 			return Fail
 		}
+		// `new` always writes a tasks.md, just an empty one, so the
+		// missing-file check above never catches "spectre new X &&
+		// spectre archive X": zero tasks trivially reads as zero unchecked,
+		// which the guard below would let through. Guard on having no
+		// tasks at all, the same content refusal --force overrides.
+		if len(c.Tasks) == 0 && !*force {
+			fmt.Fprintf(stderr, "%s: tasks.md has no tasks (use --force to archive anyway)\n", id)
+			return Fail
+		}
 		if left := len(c.Tasks) - c.DoneCount(); left > 0 && !*force {
 			fmt.Fprintf(stderr, "%s: %d of %d tasks are unchecked (use --force to archive anyway)\n",
 				id, left, len(c.Tasks))
