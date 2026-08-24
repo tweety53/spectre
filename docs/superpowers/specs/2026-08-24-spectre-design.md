@@ -194,9 +194,16 @@ example must not change what runs.
 Severity has two values, not three: a rule either produces findings or it does not. A third
 "warning" tier would need a third exit code, and the exit contract has no room for one.
 
-Configuration is per tree, and a peer's own `config.md` governs how that peer's files are read. A
-tree using `REQ-` ids can therefore be cited from a tree using `R` ids: each side parses its own
-files by its own rules, and a reference carries the id as written.
+Configuration is per tree, and a peer's own `config.md` governs how that peer's files are read — and
+how it is written, so `migrate` writing into a tree that already has a `config.md` follows that
+file's layout rather than the defaults. A tree using `REQ-` ids can therefore be cited from a tree
+using `R` ids: each side parses its own files by its own rules, and a reference carries the id as
+written.
+
+That last property constrains the reference pattern. A citation naming a peer accepts any id shape,
+because the peer's prefix is the peer's business; a citation naming no peer must match this tree's
+own prefix, or `(@v2)` in ordinary prose would become a reference. Anchoring both to the local
+prefix — the obvious reading — silently drops every cross-prefix citation before validation sees it.
 
 ## Commands
 
