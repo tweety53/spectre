@@ -53,11 +53,10 @@ func (t *Tree) Changes() ([]model.Change, error) {
 	return t.changes(false)
 }
 
-// ArchivedChanges reads change folders under changes/archive/, sorted by id.
-func (t *Tree) ArchivedChanges() ([]model.Change, error) {
-	return t.changes(true)
-}
-
+// changes reads change folders, sorted by id. archived selects
+// changes/archive/ instead of changes/. Unexported: nothing outside the
+// package needs archived changes today, so there is no public
+// ArchivedChanges wrapper — add one when a real caller needs it.
 func (t *Tree) changes(archived bool) ([]model.Change, error) {
 	dir := t.ChangesDir()
 	if archived {

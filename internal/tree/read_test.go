@@ -83,7 +83,7 @@ func TestChangesOpen(t *testing.T) {
 
 func TestChangesArchived(t *testing.T) {
 	tr := seed(t)
-	arch, err := tr.ArchivedChanges()
+	arch, err := tr.changes(true)
 	if err != nil {
 		t.Fatal(err)
 	}
