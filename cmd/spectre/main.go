@@ -32,6 +32,8 @@ func main() {
 	switch os.Args[1] {
 	case "new":
 		os.Exit(cmd.New(args, os.Stdout, os.Stderr))
+	case "list":
+		os.Exit(cmd.List(args, os.Stdout, os.Stderr))
 	case "-h", "--help", "help":
 		fmt.Fprint(os.Stdout, usage)
 		os.Exit(cmd.OK)
