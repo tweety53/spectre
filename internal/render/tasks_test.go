@@ -21,6 +21,15 @@ func TestTasks(t *testing.T) {
 	}
 }
 
+func TestTasksEmpty(t *testing.T) {
+	if got := string(Tasks(nil)); got != "# Tasks\n\n" {
+		t.Errorf("Tasks(nil) = %q, want %q", got, "# Tasks\n\n")
+	}
+	if got := string(Tasks([]model.Task{})); got != "# Tasks\n\n" {
+		t.Errorf("Tasks([]model.Task{}) = %q, want %q", got, "# Tasks\n\n")
+	}
+}
+
 func TestTasksRenumbers(t *testing.T) {
 	ts := []model.Task{{Num: 7, Text: "First"}, {Num: 9, Text: "Second"}}
 	want := "# Tasks\n\n- [ ] 1. First\n- [ ] 2. Second\n"

@@ -32,6 +32,12 @@ func TestTasksFile(t *testing.T) {
 	}
 }
 
+func TestTasksFileMissing(t *testing.T) {
+	if _, err := TasksFile(filepath.Join(t.TempDir(), "nope.md")); err == nil {
+		t.Fatal("want error for missing file")
+	}
+}
+
 func TestTasksFileEmpty(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "tasks.md")

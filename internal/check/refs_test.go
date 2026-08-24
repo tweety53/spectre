@@ -106,6 +106,18 @@ func TestRefFindingsUnknownCapabilityAndID(t *testing.T) {
 	}
 }
 
+func TestRefFindingsUnknownCapabilityInThisTree(t *testing.T) {
+	tr := twoTrees(t,
+		map[string]string{
+			"auth":  "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@other-cap#R1).\n",
+			"plans": "# plans\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL b.\n",
+		},
+		map[string]string{}, "")
+	if got := findingsFor(t, tr); !strings.Contains(got, "no capability \"other-cap\" in this tree") {
+		t.Errorf("got:\n%s", got)
+	}
+}
+
 func TestRefFindingsMalformedPeerReference(t *testing.T) {
 	tr := twoTrees(t,
 		map[string]string{"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@gymie:R4).\n"},

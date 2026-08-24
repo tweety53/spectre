@@ -34,6 +34,14 @@ Sessions and tokens.
 	}
 }
 
+func TestSpecEmptyReqs(t *testing.T) {
+	s := model.Spec{Capability: "auth", Purpose: "Sessions and tokens."}
+	want := "# auth\n\n## Purpose\nSessions and tokens.\n\n## Requirements\n"
+	if got := string(Spec(s)); got != want {
+		t.Errorf("Spec() with no reqs =\n%q\nwant\n%q", got, want)
+	}
+}
+
 func TestSpecRoundTrip(t *testing.T) {
 	src := `# auth
 

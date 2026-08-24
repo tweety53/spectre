@@ -102,9 +102,10 @@ func TestPeersDuplicateName(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Peers() should error on duplicate name, got nil")
 	}
-	// Check that both line numbers appear in the error message
-	if !strings.Contains(err.Error(), "3") || !strings.Contains(err.Error(), "1") {
-		t.Errorf("error message should contain both line numbers: %v", err)
+	// Pin the association, not just the presence of both digits: line 3 is
+	// the current (duplicate) line, line 1 is where the name first appeared.
+	if !strings.Contains(err.Error(), "peers:3:") || !strings.Contains(err.Error(), "first seen on line 1") {
+		t.Errorf("error = %q, want it to name line 3 as current and line 1 as first seen", err.Error())
 	}
 }
 
