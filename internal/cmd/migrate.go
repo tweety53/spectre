@@ -45,6 +45,16 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 		dst = filepath.Join(wd, "spectre")
 	}
 
+	// Stat the source before touching the destination at all: checking dst
+	// first meant a mistyped src with an existing dst reported "<dst>
+	// already exists (use --force to write into it)", pointing the user at
+	// a flag that would clear their tree instead of naming their actual
+	// typo.
+	if _, err := os.Stat(src); err != nil {
+		fmt.Fprintln(stderr, err)
+		return Usage
+	}
+
 	// A tree's own config.md governs how that tree is read everywhere
 	// else in spectre, so it governs how migrate writes into it too: an
 	// existing config.md — which --force deliberately preserves — decides

@@ -98,6 +98,30 @@ func TestMigrateHasNoRootFlag(t *testing.T) {
 	}
 }
 
+// TestMigrateReportsMissingSourceNotDestination pins the final-review fix:
+// migrate used to check the destination before reading the source, so a
+// mistyped source path with an existing target reported "<dst> already
+// exists (use --force ...)", pointing the user at a flag that would clear
+// their tree. It must stat the source first and report the real problem.
+func TestMigrateReportsMissingSourceNotDestination(t *testing.T) {
+	src := filepath.Join(t.TempDir(), "openspce-typo") // mistyped, does not exist
+	out := filepath.Join(t.TempDir(), "spectre")
+	if err := os.MkdirAll(out, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	if code := Migrate([]string{"--out", out, src}, &stdout, &stderr); code != Usage {
+		t.Fatalf("exit = %d, want %d, stderr = %s", code, Usage, stderr.String())
+	}
+	if strings.Contains(stderr.String(), "already exists") {
+		t.Errorf("stderr = %q, blamed the existing destination instead of the missing source", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), src) {
+		t.Errorf("stderr = %q, want it to name the mistyped source path %q", stderr.String(), src)
+	}
+}
+
 func TestMigrateIsNonDestructive(t *testing.T) {
 	src := openspecTree(t)
 	out := filepath.Join(t.TempDir(), "spectre")
