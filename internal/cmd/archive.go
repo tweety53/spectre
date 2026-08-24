@@ -78,7 +78,13 @@ func Archive(args []string, stdout, stderr io.Writer) int {
 		mv := exec.Command("git", "mv", c.Dir, dst)
 		mv.Dir = t.Root
 		if out, err := mv.CombinedOutput(); err != nil {
-			fmt.Fprintf(stderr, "git mv failed: %v\n%s", err, out)
+			// git mv's own errors ("not a git repository", "source directory
+			// is empty" for an untracked change) are cryptic on their own,
+			// so name the requirement they both stem from — archive moves a
+			// change with git, so the tree must be in a git repository with
+			// the change's files already tracked — before the raw output.
+			fmt.Fprintf(stderr, "archive requires the tree to be inside a git repository with %s's files already tracked (git add); git mv failed: %v\n%s",
+				id, err, out)
 			return Usage
 		}
 		fmt.Fprintf(stdout, "archived %s\n", id)

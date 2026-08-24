@@ -291,6 +291,35 @@ func TestFencedTaskExampleDoesNotFoolListValidateOrArchive(t *testing.T) {
 	}
 }
 
+// TestArchiveRequiresGitRepository pins the fix-round finding: outside a
+// git repository, `git mv` fails with a bare "fatal: not a git repository"
+// that names no cause a spectre user would recognize. archive must prefix
+// its own sentence naming the actual requirement — a git repository with
+// the change's files tracked — ahead of that raw output, while still
+// exiting Usage (2): this is an environment problem, not a content refusal
+// --force could ever override.
+func TestArchiveRequiresGitRepository(t *testing.T) {
+	base := seedTree(t) // no git init at all
+	tasks := filepath.Join(base, "spectre", "changes", "kan-1-first", "tasks.md")
+	if err := os.WriteFile(tasks, []byte("# Tasks\n\n- [x] 1. One\n- [x] 2. Two\n- [x] 3. Three\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out, errBuf bytes.Buffer
+	if code := Archive([]string{"--root", base, "kan-1-first"}, &out, &errBuf); code != Usage {
+		t.Fatalf("exit = %d, want %d, stderr = %s", code, Usage, errBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), "git repository") {
+		t.Errorf("stderr = %q, want it to name the git-repository requirement", errBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), "not a git repository") {
+		t.Errorf("stderr = %q, want the raw git error preserved", errBuf.String())
+	}
+	if _, err := os.Stat(filepath.Join(base, "spectre", "changes", "kan-1-first")); err != nil {
+		t.Fatalf("source folder should not have moved: %v", err)
+	}
+}
+
 func TestArchiveForceOverridesMissingTasksFile(t *testing.T) {
 	base := gitTreeNoTasks(t)
 	var out, errBuf bytes.Buffer
