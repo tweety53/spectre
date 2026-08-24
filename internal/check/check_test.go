@@ -1,10 +1,13 @@
 package check
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/tweety53/spectre/internal/model"
+	"github.com/tweety53/spectre/internal/tree"
 )
 
 func msgs(fs []Finding) string {
@@ -69,6 +72,59 @@ func TestSpecFindingsMalformedBullet(t *testing.T) {
 	got := msgs(SpecFindings("specs/auth.md", s, raw))
 	if !strings.Contains(got, "specs/auth.md:7: malformed requirement bullet") {
 		t.Errorf("got:\n%s", got)
+	}
+}
+
+func TestSpecFindingsHeadingInFence(t *testing.T) {
+	raw := []byte("# auth\n\n```\n## Purpose\n```\n\n## Requirements\n- R1: The system SHALL a.\n")
+	s := model.Spec{Capability: "auth", Reqs: []model.Requirement{{ID: "R1", Num: 1, Text: "The system SHALL a.", Line: 8}}}
+	got := msgs(SpecFindings("specs/auth.md", s, raw))
+	if !strings.Contains(got, "missing \"## Purpose\"") {
+		t.Errorf("got:\n%s", got)
+	}
+}
+
+func TestSpecFindingsHeadingLastLineNoNewline(t *testing.T) {
+	raw := []byte("# auth\n\n## Purpose\nP.\n\n## Requirements")
+	s := model.Spec{Capability: "auth", Purpose: "P."}
+	got := msgs(SpecFindings("specs/auth.md", s, raw))
+	if strings.Contains(got, "missing \"## Requirements\"") {
+		t.Errorf("got:\n%s", got)
+	}
+}
+
+func TestSpecFindingsMalformedBulletInFenceIgnored(t *testing.T) {
+	raw := []byte("# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a.\n\n```\n- R1 no colon\n```\n")
+	s := model.Spec{Capability: "auth", Purpose: "P.", Reqs: []model.Requirement{{ID: "R1", Num: 1, Text: "The system SHALL a.", Line: 7}}}
+	got := msgs(SpecFindings("specs/auth.md", s, raw))
+	if strings.Contains(got, "malformed requirement bullet") {
+		t.Errorf("got:\n%s", got)
+	}
+}
+
+func TestStructuralMissingTasks(t *testing.T) {
+	base := t.TempDir()
+	root := filepath.Join(base, "spectre")
+	changeDir := filepath.Join(root, "changes", "x")
+	if err := os.MkdirAll(changeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "specs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(changeDir, "proposal.md"), []byte("# x\n\n## Why\nB.\n\n## What changes\nC.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tr, err := tree.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Structural(tr, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(msgs(got), "changes/x/tasks.md:1: missing tasks.md") {
+		t.Errorf("got:\n%s", msgs(got))
 	}
 }
 

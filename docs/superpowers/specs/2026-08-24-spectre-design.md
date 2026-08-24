@@ -202,7 +202,11 @@ Findings print as `file:line: message`. Exit 0 clean, 1 findings, 2 usage or IO 
 - Requirement ids unique within a file and gap-free.
 - Task lines match `- [ ] <n>. <text>` or `- [x] <n>. <text>`, numbers unique and ascending; a line
   opening `- [` that does not match is reported as malformed rather than ignored.
-- `proposal.md` has `## Why` and `## What changes`.
+- `proposal.md` has `## Why` and `## What changes`; a change missing either `proposal.md` or
+  `tasks.md` is reported, since `archive` refuses only on unchecked tasks and a change with no task
+  file would otherwise pass unremarked.
+- Headings and requirement bullets are matched outside fenced code blocks only, so an example inside
+  a fence neither satisfies a heading rule nor trips the malformed-bullet rule.
 - Every reference resolves by the four checks above.
 
 ## Implementation

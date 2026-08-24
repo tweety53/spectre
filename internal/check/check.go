@@ -3,7 +3,6 @@
 package check
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -33,10 +32,20 @@ var (
 
 // malformedReqFindings reports bullets inside "## Requirements" that the
 // parser cannot read as requirements, which would otherwise vanish silently.
+// Fenced code blocks are skipped, so an example bullet inside a ``` fence
+// is not mistaken for a malformed requirement.
 func malformedReqFindings(rel string, raw []byte) []Finding {
 	var out []Finding
 	inReqs := false
+	inFence := false
 	for i, line := range strings.Split(string(raw), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "```") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
 		if strings.HasPrefix(line, "## ") {
 			inReqs = strings.TrimSpace(strings.TrimPrefix(line, "## ")) == "Requirements"
 			continue
@@ -48,10 +57,27 @@ func malformedReqFindings(rel string, raw []byte) []Finding {
 	return out
 }
 
+// headingFindings reports headings from want that never appear as their own
+// line outside a fenced code block. A line scan (rather than substring
+// matching) means a heading that is the file's last line, with no trailing
+// newline, is still recognized, and a heading that appears only inside a
+// ``` fence or as quoted example text is not.
 func headingFindings(rel string, raw []byte, want []string) []Finding {
+	present := map[string]bool{}
+	inFence := false
+	for _, line := range strings.Split(string(raw), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "```") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
+		present[strings.TrimRight(line, " \t\r")] = true
+	}
 	var out []Finding
 	for _, h := range want {
-		if !bytes.Contains(raw, []byte("\n"+h+"\n")) && !bytes.HasPrefix(raw, []byte(h+"\n")) {
+		if !present[h] {
 			out = append(out, Finding{File: rel, Line: 1, Msg: fmt.Sprintf("missing %q", h)})
 		}
 	}
@@ -156,10 +182,14 @@ func Structural(t *tree.Tree, changeID string) ([]Finding, error) {
 		}
 		tasksPath := filepath.Join(c.Dir, "tasks.md")
 		tasksRaw, err := os.ReadFile(tasksPath)
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+			out = append(out, Finding{File: rel(t, tasksPath), Line: 1, Msg: "missing tasks.md"})
+		case err != nil:
 			return nil, err
+		default:
+			out = append(out, TaskFindings(rel(t, tasksPath), tasksRaw, c.Tasks)...)
 		}
-		out = append(out, TaskFindings(rel(t, tasksPath), tasksRaw, c.Tasks)...)
 	}
 	return out, nil
 }
