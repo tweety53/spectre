@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/tweety53/spectre/internal/config"
 	"github.com/tweety53/spectre/internal/model"
 	"github.com/tweety53/spectre/internal/parse"
 )
@@ -58,7 +59,7 @@ Sessions and tokens.
 	if err := os.WriteFile(p, []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	parsed, err := parse.SpecFile(p)
+	parsed, err := parse.New(config.Default()).SpecFile(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +98,7 @@ Sessions and tokens.
 	if err := os.WriteFile(p, []byte(got), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	parsed, err := parse.SpecFile(p)
+	parsed, err := parse.New(config.Default()).SpecFile(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +136,7 @@ Sessions and tokens.
 	if err := os.WriteFile(p, []byte(got), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	parsed, err := parse.SpecFile(p)
+	parsed, err := parse.New(config.Default()).SpecFile(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +198,7 @@ Sessions and tokens.
 	if err := os.WriteFile(p, []byte(got), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	parsed, err := parse.SpecFile(p)
+	parsed, err := parse.New(config.Default()).SpecFile(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +238,7 @@ Sessions and tokens.
 	if err := os.WriteFile(p, []byte(got), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	parsed, err := parse.SpecFile(p)
+	parsed, err := parse.New(config.Default()).SpecFile(p)
 	if err != nil {
 		t.Fatal(err)
 	}

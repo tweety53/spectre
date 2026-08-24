@@ -43,9 +43,3 @@ func (p *Parser) TasksFile(path string) ([]model.Task, error) {
 	}
 	return out, sc.Err()
 }
-
-// TasksFile reads a change's tasks.md using the default configuration.
-//
-// Deprecated: build a *Parser via New and call its TasksFile method — a
-// *tree.Tree carries one configured for its own tree.
-func TasksFile(path string) ([]model.Task, error) { return defaultParser.TasksFile(path) }

@@ -56,13 +56,3 @@ func (p *Parser) Refs(text string, line int) []model.Ref {
 func trimParens(s string) string {
 	return s[2 : len(s)-1] // strip "(@" and ")"
 }
-
-// defaultParser backs the package-level functions below, kept only until
-// every caller in this change has migrated to a tree's own *Parser.
-var defaultParser = New(config.Default())
-
-// Refs extracts every reference in text using the default configuration.
-//
-// Deprecated: build a *Parser via New and call its Refs method — a
-// *tree.Tree carries one configured for its own tree.
-func Refs(text string, line int) []model.Ref { return defaultParser.Refs(text, line) }

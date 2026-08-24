@@ -71,10 +71,3 @@ func (p *Parser) SpecFile(path string) (model.Spec, error) {
 	spec.Purpose = strings.TrimSpace(strings.Join(purpose, "\n"))
 	return spec, nil
 }
-
-// SpecFile reads one capability file into a model.Spec using the default
-// configuration.
-//
-// Deprecated: build a *Parser via New and call its SpecFile method — a
-// *tree.Tree carries one configured for its own tree.
-func SpecFile(path string) (model.Spec, error) { return defaultParser.SpecFile(path) }
