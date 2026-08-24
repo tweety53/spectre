@@ -216,6 +216,40 @@ func TestMigrateHonorsTargetConfig(t *testing.T) {
 	}
 }
 
+// TestMigrateHonorsTargetIDPrefix pins the carried finding from task 15's
+// review: migrate generated literal "R<n>" requirement ids regardless of
+// the target's configured id prefix, so migrating into a tree whose
+// Vocabulary declared "id-prefix: REQ-" wrote bullets like "- R1: ..." that
+// migrate's own validation pass — now prefix-aware — then rejected as
+// malformed, a command declaring its own output invalid.
+func TestMigrateHonorsTargetIDPrefix(t *testing.T) {
+	src := openspecTree(t)
+	out := filepath.Join(t.TempDir(), "spectre")
+	if err := os.MkdirAll(out, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(out, "config.md"),
+		[]byte("## Vocabulary\n- id-prefix: REQ-\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	if code := Migrate([]string{"--out", out, "--force", src}, &stdout, &stderr); code != OK {
+		t.Fatalf("exit = %d\nstdout: %s\nstderr: %s", code, stdout.String(), stderr.String())
+	}
+
+	spec, err := os.ReadFile(filepath.Join(out, "specs", "auth.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(spec), "- REQ-1: ") {
+		t.Errorf("spec does not use the target's configured prefix:\n%s", spec)
+	}
+	if strings.Contains(stdout.String(), "malformed requirement bullet") {
+		t.Errorf("migrate's own validation pass rejected its REQ- output:\n%s", stdout.String())
+	}
+}
+
 func TestMigrateWarnsOnPlaceholderPurpose(t *testing.T) {
 	src := openspecTree(t)
 	if err := os.WriteFile(filepath.Join(src, "specs", "auth", "spec.md"),

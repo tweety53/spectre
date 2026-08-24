@@ -83,7 +83,7 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 		converted := model.Spec{Capability: s.Capability, Purpose: s.Purpose}
 		for i, r := range s.Reqs {
 			converted.Reqs = append(converted.Reqs, model.Requirement{
-				ID:    fmt.Sprintf("R%d", i+1),
+				ID:    fmt.Sprintf("%s%d", cfg.IDPrefix, i+1),
 				Num:   i + 1,
 				Text:  r.Title,
 				Notes: r.Body,
