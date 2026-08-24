@@ -69,3 +69,40 @@ func TestNewRequiresID(t *testing.T) {
 		t.Fatalf("exit = %d, want %d", code, Usage)
 	}
 }
+
+func TestNewRejectsInvalidID(t *testing.T) {
+	tests := []struct {
+		name string
+		id   string
+	}{
+		{"escape parent", "../escape"},
+		{"nested dir", "sub/dir"},
+		{"parent dot dot", ".."},
+		{"current dot", "."},
+		{"absolute path", "/absolute"},
+		{"backslash escape", "..\\escape"},
+		{"empty string", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := emptyTree(t)
+			var out, errBuf bytes.Buffer
+			code := New([]string{"--root", base, tt.id}, &out, &errBuf)
+			if code != Usage {
+				t.Fatalf("exit = %d, want %d", code, Usage)
+			}
+			if !strings.Contains(errBuf.String(), "invalid change id") {
+				t.Errorf("stderr = %q, want 'invalid change id'", errBuf.String())
+			}
+			// Verify nothing was created under changes/
+			changesDir := filepath.Join(base, "spectre", "changes")
+			entries, err := os.ReadDir(changesDir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(entries) > 0 {
+				t.Errorf("created unwanted entries: %v", entries)
+			}
+		})
+	}
+}

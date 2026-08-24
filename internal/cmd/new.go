@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/tweety53/spectre/internal/render"
 )
@@ -32,6 +33,11 @@ func New(args []string, stdout, stderr io.Writer) int {
 	}
 	id := fs.Arg(0)
 
+	if !isValidID(id) {
+		fmt.Fprintf(stderr, "invalid change id: %q\n", id)
+		return Usage
+	}
+
 	t, err := resolve(*root)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -55,9 +61,28 @@ func New(args []string, stdout, stderr io.Writer) int {
 	for name, body := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), body, 0o644); err != nil {
 			fmt.Fprintln(stderr, err)
+			os.RemoveAll(dir)
 			return Usage
 		}
 	}
 	fmt.Fprintf(stdout, "created %s\n", dir)
 	return OK
+}
+
+// isValidID checks that id is a single flat directory name with no path traversal.
+func isValidID(id string) bool {
+	if id == "" || id == "." || id == ".." {
+		return false
+	}
+	// Check for path separators
+	if strings.Contains(id, "/") || strings.Contains(id, "\\") {
+		return false
+	}
+	if filepath.Clean(id) != id {
+		return false
+	}
+	if filepath.IsAbs(id) {
+		return false
+	}
+	return true
 }
