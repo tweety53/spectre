@@ -222,13 +222,16 @@ func TestArchiveForceOverridesNoTasksAtAll(t *testing.T) {
 // TestFencedTaskExampleDoesNotFoolListValidateOrArchive pins the
 // second-round final-review fix: a tasks.md with two real, finished tasks
 // and a fenced example containing a task-shaped line must not let that
-// fenced line count as a real task anywhere. Before the fix, list
-// mis-reported "c1  2/3", validate emitted three false findings (including
-// "malformed task line" on a line inside the fence), and archive refused a
-// genuinely finished change with "1 of 3 tasks are unchecked" — whose only
-// escape, --force, also disarms the zero-task and unchecked-task content
-// guards. This is the case that matters most: archive must accept the
-// change WITHOUT --force.
+// fenced line count as a real task anywhere. The fenced line's number (1)
+// deliberately reuses a real task's number, so that on the pre-fix
+// fence-unaware parser it does not just inflate the count — it also trips
+// check.TaskFindings' duplicate-task-number check, making all three
+// assertions below genuine regressions on this one fixture: pre-fix, list
+// mis-reports "c1  2/3", validate reports a false "duplicate task number 1"
+// finding, and archive refuses a genuinely finished change with "1 of 3
+// tasks are unchecked" — whose only escape, --force, also disarms the
+// zero-task and unchecked-task content guards. This is the case that
+// matters most: archive must accept the change WITHOUT --force.
 func TestFencedTaskExampleDoesNotFoolListValidateOrArchive(t *testing.T) {
 	base := emptyTree(t)
 	dir := filepath.Join(base, "spectre", "changes", "c1")
@@ -243,7 +246,7 @@ func TestFencedTaskExampleDoesNotFoolListValidateOrArchive(t *testing.T) {
 		"- [x] 1. Real task one\n" +
 		"- [x] 2. Real task two\n" +
 		"```\n" +
-		"- [ ] 3. Not a real task, just an example\n" +
+		"- [ ] 1. Not a real task, just an example\n" +
 		"```\n"
 	if err := os.WriteFile(filepath.Join(dir, "tasks.md"), []byte(tasks), 0o644); err != nil {
 		t.Fatal(err)
