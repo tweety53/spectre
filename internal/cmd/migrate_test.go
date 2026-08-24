@@ -178,6 +178,44 @@ func TestMigrateForceClearsStaleFiles(t *testing.T) {
 	}
 }
 
+// TestMigrateHonorsTargetConfig pins fix round 1's second finding: a
+// target holding a config.md with a non-default layout must be written
+// under THAT layout, not config.Default()'s "specs"/"changes" — clearForce
+// deliberately preserves an existing config.md, so migrate must honor it
+// too, or its own "no findings" validation pass and a subsequent
+// "list --specs" would both silently look in the wrong place.
+func TestMigrateHonorsTargetConfig(t *testing.T) {
+	src := openspecTree(t)
+	out := filepath.Join(t.TempDir(), "spectre")
+	if err := os.MkdirAll(out, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(out, "config.md"),
+		[]byte("## Layout\n- specs: docs/specs\n- changes: docs/changes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	if code := Migrate([]string{"--out", out, "--force", src}, &stdout, &stderr); code != OK {
+		t.Fatalf("exit = %d\nstdout: %s\nstderr: %s", code, stdout.String(), stderr.String())
+	}
+
+	if _, err := os.Stat(filepath.Join(out, "docs", "specs", "auth.md")); err != nil {
+		t.Fatalf("spec not written under the target's configured layout: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "specs")); !os.IsNotExist(err) {
+		t.Errorf("spec written under the default specs/ layout instead of the target's configured docs/specs")
+	}
+
+	var listOut, listErr bytes.Buffer
+	if code := List([]string{"--root", out, "--specs"}, &listOut, &listErr); code != OK {
+		t.Fatalf("list --specs exit = %d, stderr = %s", code, listErr.String())
+	}
+	if !strings.Contains(listOut.String(), "auth") {
+		t.Errorf("list --specs cannot read migrate's own output: %q", listOut.String())
+	}
+}
+
 func TestMigrateWarnsOnPlaceholderPurpose(t *testing.T) {
 	src := openspecTree(t)
 	if err := os.WriteFile(filepath.Join(src, "specs", "auth", "spec.md"),

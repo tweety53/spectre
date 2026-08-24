@@ -38,12 +38,27 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 		}
 		dst = filepath.Join(wd, "spectre")
 	}
+
+	// A tree's own config.md governs how that tree is read everywhere
+	// else in spectre, so it governs how migrate writes into it too: an
+	// existing config.md — which --force deliberately preserves — decides
+	// the layout, extension and vocabulary migrate writes, not a
+	// hardcoded default. A target with no config.md yet gets
+	// config.Default(), which config.Load already returns for an absent
+	// file.
+	cfg, err := config.Load(dst)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return Usage
+	}
+	dstTree := tree.At(dst, cfg)
+
 	if _, err := os.Stat(dst); err == nil {
 		if !*force {
 			fmt.Fprintf(stderr, "%s already exists (use --force to write into it)\n", dst)
 			return Fail
 		}
-		cleared, err := clearForce(dst)
+		cleared, err := clearForce(dstTree)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return Usage
@@ -60,7 +75,7 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return Usage
 	}
-	if err := os.MkdirAll(filepath.Join(dst, "specs"), 0o755); err != nil {
+	if err := os.MkdirAll(dstTree.SpecsDir(), 0o755); err != nil {
 		fmt.Fprintln(stderr, err)
 		return Usage
 	}
@@ -74,7 +89,8 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 				Notes: r.Body,
 			})
 		}
-		if err := os.WriteFile(filepath.Join(dst, "specs", s.Capability+".md"), render.Spec(converted), 0o644); err != nil {
+		specPath := filepath.Join(dstTree.SpecsDir(), s.Capability+cfg.Extension)
+		if err := os.WriteFile(specPath, render.Spec(converted), 0o644); err != nil {
 			fmt.Fprintln(stderr, err)
 			return Usage
 		}
@@ -86,19 +102,19 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 		return Usage
 	}
 	for _, c := range changes {
-		target := filepath.Join(dst, "changes", c.ID)
+		target := filepath.Join(dstTree.ChangesDir(), c.ID)
 		if err := os.MkdirAll(target, 0o755); err != nil {
 			fmt.Fprintln(stderr, err)
 			return Usage
 		}
 		if raw, err := os.ReadFile(filepath.Join(c.Dir, "proposal.md")); err == nil {
-			if err := os.WriteFile(filepath.Join(target, "proposal.md"), openspec.ConvertProposal(raw), 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(target, tree.ProposalFile), openspec.ConvertProposal(raw), 0o644); err != nil {
 				fmt.Fprintln(stderr, err)
 				return Usage
 			}
 		}
 		if raw, err := os.ReadFile(filepath.Join(c.Dir, "tasks.md")); err == nil {
-			if err := os.WriteFile(filepath.Join(target, "tasks.md"), render.Tasks(openspec.ConvertTasks(raw)), 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(target, tree.TasksFile), render.Tasks(openspec.ConvertTasks(raw)), 0o644); err != nil {
 				fmt.Fprintln(stderr, err)
 				return Usage
 			}
@@ -125,7 +141,7 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	archived, err := copyDir(filepath.Join(src, "changes", "archive"), filepath.Join(dst, "changes", "archive"))
+	archived, err := copyDir(filepath.Join(src, "changes", "archive"), dstTree.ArchiveDir())
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return Usage
@@ -134,10 +150,7 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 	// The promise of a clean exit is that the written tree validates, so
 	// migrate runs exactly the checks "spectre validate" runs over a whole
 	// tree and reports every finding as a warning, rather than reimplementing
-	// any of check's rules itself. migrate writes specs/, changes/ and no
-	// config.md, so its output always follows config.Default()'s layout,
-	// regardless of any config.md a previous --force run left behind.
-	dstTree := tree.At(dst, config.Default())
+	// any of check's rules itself.
 	declaredPeers, err := dstTree.Peers()
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -163,21 +176,24 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 	return OK
 }
 
-// clearForce removes dst's specs/ and changes/ subdirectories, if present,
-// so a --force re-run cannot leave a stale file behind from a capability or
-// change that no longer exists in the source. It touches only those two
-// paths, never dst itself, so any other file a user has already placed in
-// dst (a config.md, a peers file) survives. It returns the names cleared,
-// for the report.
-func clearForce(dst string) ([]string, error) {
+// clearForce removes dstTree's configured specs and changes subdirectories,
+// if present, so a --force re-run cannot leave a stale file behind from a
+// capability or change that no longer exists in the source. It touches only
+// those two directories, never dstTree.Root itself, so any other file a
+// user has already placed there (a config.md, a peers file) survives. It
+// returns the names cleared, relative to dstTree.Root, for the report.
+func clearForce(dstTree *tree.Tree) ([]string, error) {
 	var cleared []string
-	for _, name := range []string{"specs", "changes"} {
-		p := filepath.Join(dst, name)
-		if _, err := os.Stat(p); err == nil {
-			if err := os.RemoveAll(p); err != nil {
+	for _, dir := range []string{dstTree.SpecsDir(), dstTree.ChangesDir()} {
+		if _, err := os.Stat(dir); err == nil {
+			if err := os.RemoveAll(dir); err != nil {
 				return nil, err
 			}
-			cleared = append(cleared, name+"/")
+			rel, err := filepath.Rel(dstTree.Root, dir)
+			if err != nil {
+				rel = dir
+			}
+			cleared = append(cleared, rel+"/")
 		} else if !os.IsNotExist(err) {
 			return nil, err
 		}
