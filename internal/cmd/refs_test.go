@@ -91,3 +91,45 @@ func TestRefsBadArgument(t *testing.T) {
 		t.Errorf("stderr = %q", errBuf.String())
 	}
 }
+
+func TestRefsPeerBadPeersFile(t *testing.T) {
+	base := twoTreesCmd(t)
+	gymiePeers := filepath.Join(filepath.Dir(base), "gymie", "spectre", "peers")
+	if err := os.WriteFile(gymiePeers, []byte("app\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out, errBuf bytes.Buffer
+	if code := Refs([]string{"--root", base, "auth#R1"}, &out, &errBuf); code != OK {
+		t.Fatalf("exit = %d, stderr = %s", code, errBuf.String())
+	}
+	got := out.String()
+	if !strings.Contains(got, "specs/plans.md:8: R2 cites @auth#R1") {
+		t.Errorf("missing local citation in:\n%s", got)
+	}
+	if !strings.Contains(got, "gymie (unreadable:") {
+		t.Errorf("missing unreadable marker in:\n%s", got)
+	}
+}
+
+func TestRefsPeerUnreadableSpec(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores file permissions")
+	}
+	base := twoTreesCmd(t)
+	billing := filepath.Join(filepath.Dir(base), "gymie", "spectre", "specs", "billing.md")
+	if err := os.Chmod(billing, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(billing, 0o644) })
+	var out, errBuf bytes.Buffer
+	if code := Refs([]string{"--root", base, "auth#R1"}, &out, &errBuf); code != OK {
+		t.Fatalf("exit = %d, stderr = %s", code, errBuf.String())
+	}
+	got := out.String()
+	if !strings.Contains(got, "specs/plans.md:8: R2 cites @auth#R1") {
+		t.Errorf("missing local citation in:\n%s", got)
+	}
+	if !strings.Contains(got, "gymie (unreadable:") {
+		t.Errorf("missing unreadable marker in:\n%s", got)
+	}
+}

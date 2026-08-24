@@ -73,16 +73,15 @@ func Refs(args []string, stdout, stderr io.Writer) int {
 			scanned = append(scanned, name+" (not present)")
 			continue
 		}
-		scanned = append(scanned, name)
 		pt, err := tree.Open(path)
 		if err != nil {
-			fmt.Fprintln(stderr, err)
-			return Usage
+			scanned = append(scanned, fmt.Sprintf("%s (unreadable: %s)", name, err))
+			continue
 		}
 		theirPeers, err := pt.Peers()
 		if err != nil {
-			fmt.Fprintln(stderr, err)
-			return Usage
+			scanned = append(scanned, fmt.Sprintf("%s (unreadable: %s)", name, err))
+			continue
 		}
 		// Which name does this peer use for us?
 		ourNames := map[string]bool{}
@@ -93,9 +92,10 @@ func Refs(args []string, stdout, stderr io.Writer) int {
 		}
 		pSpecs, err := pt.Specs()
 		if err != nil {
-			fmt.Fprintln(stderr, err)
-			return Usage
+			scanned = append(scanned, fmt.Sprintf("%s (unreadable: %s)", name, err))
+			continue
 		}
+		scanned = append(scanned, name)
 		for _, s := range pSpecs {
 			for _, r := range s.Reqs {
 				for _, ref := range r.Refs {
