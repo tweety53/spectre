@@ -25,11 +25,23 @@ const (
 	TasksFile    = "tasks.md"
 )
 
-// Tree is a resolved spectre tree, carrying its own configuration.
+// Tree is a resolved spectre tree, carrying its own configuration. The
+// zero value is not valid: its SpecsDir and ChangesDir would resolve to
+// Root itself and its parser would be nil. Build one with At, Find or
+// Open instead.
 type Tree struct {
 	Root string // absolute path of the spectre/ directory
 	Cfg  config.Config
-	P    *parse.Parser
+	p    *parse.Parser
+}
+
+// At builds a Tree for root under cfg, without reading config.md itself
+// — for a caller that has already resolved cfg, such as cmd.Migrate,
+// which reads the target's own config.md before writing into it under
+// that same layout. Find and Open resolve cfg themselves via
+// config.Load and are the usual way to open an existing tree.
+func At(root string, cfg config.Config) *Tree {
+	return &Tree{Root: root, Cfg: cfg, p: parse.New(cfg)}
 }
 
 // Find walks up from start looking for a spectre/ directory.
@@ -74,7 +86,7 @@ func load(root string) (*Tree, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Tree{Root: root, Cfg: cfg, P: parse.New(cfg)}, nil
+	return At(root, cfg), nil
 }
 
 // SpecsDir is the tree's capability-specs subdirectory.

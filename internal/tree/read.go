@@ -25,7 +25,7 @@ func (t *Tree) Specs() ([]model.Spec, error) {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), t.Cfg.Extension) {
 			continue
 		}
-		s, err := t.P.SpecFile(filepath.Join(t.SpecsDir(), e.Name()))
+		s, err := t.p.SpecFile(filepath.Join(t.SpecsDir(), e.Name()))
 		if err != nil {
 			return nil, err
 		}
@@ -44,7 +44,7 @@ func (t *Tree) Spec(capability string) (model.Spec, error) {
 		}
 		return model.Spec{}, fmt.Errorf("capability %q in %s: %w", capability, t.SpecsDir(), err)
 	}
-	return t.P.SpecFile(p)
+	return t.p.SpecFile(p)
 }
 
 // Changes reads open change folders under changes/, sorted by id.
@@ -74,7 +74,7 @@ func (t *Tree) changes(archived bool) ([]model.Change, error) {
 			continue
 		}
 		c := model.Change{ID: e.Name(), Dir: filepath.Join(dir, e.Name()), Archived: archived}
-		tasks, err := t.P.TasksFile(filepath.Join(c.Dir, TasksFile))
+		tasks, err := t.p.TasksFile(filepath.Join(c.Dir, TasksFile))
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}

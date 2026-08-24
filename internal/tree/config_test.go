@@ -81,6 +81,43 @@ func TestDefaultTreeStillWorks(t *testing.T) {
 	}
 }
 
+func TestConfiguredExtensionExcludesOtherFiles(t *testing.T) {
+	base := treeWithConfig(t)
+	stray := filepath.Join(base, "spectre", "docs", "specs", "note.md")
+	if err := os.WriteFile(stray, []byte("not a spec"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tr, err := Find(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	specs, err := tr.Specs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(specs) != 1 || specs[0].Capability != "auth" {
+		t.Errorf("specs = %+v, want only auth.markdown — a .md file must not be read as a spec in a .markdown tree", specs)
+	}
+}
+
+func TestOpenLoadsConfigLikeFind(t *testing.T) {
+	base := treeWithConfig(t)
+	tr, err := Open(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Cfg.IDPrefix != "REQ-" || tr.Cfg.Extension != ".markdown" {
+		t.Fatalf("Cfg = %+v, want the tree's own config.md loaded", tr.Cfg)
+	}
+	s, err := tr.Spec("auth")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Reqs) != 2 || s.Reqs[0].ID != "REQ-1" {
+		t.Errorf("Open-resolved spec = %+v, want the same result Find gives", s)
+	}
+}
+
 func TestBadConfigIsAnError(t *testing.T) {
 	base := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(base, "spectre", "specs"), 0o755); err != nil {
