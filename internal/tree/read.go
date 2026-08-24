@@ -40,7 +40,10 @@ func (t *Tree) Specs() ([]model.Spec, error) {
 func (t *Tree) Spec(capability string) (model.Spec, error) {
 	p := filepath.Join(t.SpecsDir(), capability+".md")
 	if _, err := os.Stat(p); err != nil {
-		return model.Spec{}, fmt.Errorf("no such capability %q in %s", capability, t.SpecsDir())
+		if errors.Is(err, os.ErrNotExist) {
+			return model.Spec{}, fmt.Errorf("no such capability %q in %s", capability, t.SpecsDir())
+		}
+		return model.Spec{}, fmt.Errorf("capability %q in %s: %w", capability, t.SpecsDir(), err)
 	}
 	return parse.SpecFile(p)
 }

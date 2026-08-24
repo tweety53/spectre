@@ -61,7 +61,9 @@ func New(args []string, stdout, stderr io.Writer) int {
 	for name, body := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), body, 0o644); err != nil {
 			fmt.Fprintln(stderr, err)
-			os.RemoveAll(dir)
+			if rmErr := os.RemoveAll(dir); rmErr != nil {
+				fmt.Fprintf(stderr, "and cleanup of %s also failed: %v; remove it by hand\n", dir, rmErr)
+			}
 			return Usage
 		}
 	}
