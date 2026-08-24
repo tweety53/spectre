@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/tweety53/spectre/internal/check"
+	"github.com/tweety53/spectre/internal/model"
 	"github.com/tweety53/spectre/internal/tree"
 )
 
@@ -43,6 +44,10 @@ func Refs(args []string, stdout, stderr io.Writer) int {
 	specs, err := t.Specs()
 	if err != nil {
 		fmt.Fprintln(stderr, err)
+		return Usage
+	}
+	if !hasCapability(specs, capName) {
+		fmt.Fprintf(stderr, "no such capability %q in %s\n", capName, t.SpecsDir())
 		return Usage
 	}
 
@@ -93,6 +98,18 @@ func Refs(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "scanned: %s\n", strings.Join(scanned, ", "))
 	return OK
+}
+
+// hasCapability reports whether name matches one of specs. A typo'd
+// capability must be a wrong invocation (exit 2), not a real answer with
+// zero citations (exit 0) — the two are otherwise indistinguishable output.
+func hasCapability(specs []model.Spec, name string) bool {
+	for _, s := range specs {
+		if s.Capability == name {
+			return true
+		}
+	}
+	return false
 }
 
 func sortedKeys(m map[string]string) []string {

@@ -66,6 +66,23 @@ func TestRefsReportsAbsentPeer(t *testing.T) {
 	}
 }
 
+// TestRefsRejectsUnknownCapability pins the final-review fix: a typo'd
+// capability like "auht#R1" must not print "no citations of auht#R1" and
+// exit 0, indistinguishable from a real empty answer. It is a wrong
+// invocation, so it exits Usage (2) and names the unknown capability.
+func TestRefsRejectsUnknownCapability(t *testing.T) {
+	var out, errBuf bytes.Buffer
+	if code := Refs([]string{"--root", twoTreesCmd(t), "auht#R1"}, &out, &errBuf); code != Usage {
+		t.Fatalf("exit = %d, want %d, stdout = %q", code, Usage, out.String())
+	}
+	if !strings.Contains(errBuf.String(), `"auht"`) {
+		t.Errorf("stderr = %q, want it to name the unknown capability", errBuf.String())
+	}
+	if strings.Contains(out.String(), "no citations") {
+		t.Errorf("stdout = %q, an unknown capability must not print a real-answer-shaped message", out.String())
+	}
+}
+
 func TestRefsBadArgument(t *testing.T) {
 	var out, errBuf bytes.Buffer
 	if code := Refs([]string{"--root", twoTreesCmd(t), "auth"}, &out, &errBuf); code != Usage {
