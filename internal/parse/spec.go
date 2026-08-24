@@ -1,0 +1,69 @@
+package parse
+
+import (
+	"bufio"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/tweety53/spectre/internal/model"
+)
+
+var reqRe = regexp.MustCompile(`^- (R(\d+)): (.*)$`)
+
+// SpecFile reads one capability file into a model.Spec.
+func SpecFile(path string) (model.Spec, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return model.Spec{}, err
+	}
+	defer f.Close()
+
+	spec := model.Spec{
+		Capability: strings.TrimSuffix(filepath.Base(path), ".md"),
+		Path:       path,
+	}
+
+	var purpose []string
+	section := ""
+	line := 0
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	for sc.Scan() {
+		line++
+		t := sc.Text()
+
+		if strings.HasPrefix(t, "## ") {
+			section = strings.TrimSpace(strings.TrimPrefix(t, "## "))
+			continue
+		}
+
+		switch section {
+		case "Purpose":
+			purpose = append(purpose, t)
+		case "Requirements":
+			if m := reqRe.FindStringSubmatch(t); m != nil {
+				num, _ := strconv.Atoi(m[2])
+				spec.Reqs = append(spec.Reqs, model.Requirement{
+					ID:   m[1],
+					Num:  num,
+					Text: m[3],
+					Refs: Refs(t, line),
+					Line: line,
+				})
+				continue
+			}
+			if note := strings.TrimSpace(t); note != "" && len(spec.Reqs) > 0 && strings.HasPrefix(t, "  ") {
+				last := &spec.Reqs[len(spec.Reqs)-1]
+				last.Notes = append(last.Notes, note)
+			}
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return model.Spec{}, err
+	}
+	spec.Purpose = strings.TrimSpace(strings.Join(purpose, "\n"))
+	return spec, nil
+}
