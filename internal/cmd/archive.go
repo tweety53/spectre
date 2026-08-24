@@ -32,7 +32,7 @@ func Archive(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return Usage
 	}
-	changes, err := t.Changes(false)
+	changes, err := t.Changes()
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return Usage

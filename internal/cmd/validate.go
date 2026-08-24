@@ -25,7 +25,7 @@ func Validate(args []string, stdout, stderr io.Writer) int {
 
 	changeID := fs.Arg(0)
 	if changeID != "" {
-		changes, err := t.Changes(false)
+		changes, err := t.Changes()
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return Usage

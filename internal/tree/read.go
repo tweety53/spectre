@@ -48,9 +48,17 @@ func (t *Tree) Spec(capability string) (model.Spec, error) {
 	return parse.SpecFile(p)
 }
 
-// Changes reads change folders, sorted by id. archived selects
-// changes/archive/ instead of changes/.
-func (t *Tree) Changes(archived bool) ([]model.Change, error) {
+// Changes reads open change folders under changes/, sorted by id.
+func (t *Tree) Changes() ([]model.Change, error) {
+	return t.changes(false)
+}
+
+// ArchivedChanges reads change folders under changes/archive/, sorted by id.
+func (t *Tree) ArchivedChanges() ([]model.Change, error) {
+	return t.changes(true)
+}
+
+func (t *Tree) changes(archived bool) ([]model.Change, error) {
 	dir := t.ChangesDir()
 	if archived {
 		dir = t.ArchiveDir()

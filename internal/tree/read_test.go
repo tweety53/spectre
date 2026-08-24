@@ -61,9 +61,9 @@ func TestSpecByName(t *testing.T) {
 	}
 }
 
-func TestChangesOpenAndArchived(t *testing.T) {
+func TestChangesOpen(t *testing.T) {
 	tr := seed(t)
-	open, err := tr.Changes(false)
+	open, err := tr.Changes()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,8 +79,11 @@ func TestChangesOpenAndArchived(t *testing.T) {
 	if open[0].Archived {
 		t.Error("open change marked archived")
 	}
+}
 
-	arch, err := tr.Changes(true)
+func TestChangesArchived(t *testing.T) {
+	tr := seed(t)
+	arch, err := tr.ArchivedChanges()
 	if err != nil {
 		t.Fatal(err)
 	}

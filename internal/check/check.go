@@ -165,7 +165,7 @@ func Structural(t *tree.Tree, changeID string) ([]Finding, error) {
 		out = append(out, refFindings...)
 	}
 
-	changes, err := t.Changes(false)
+	changes, err := t.Changes()
 	if err != nil {
 		return nil, err
 	}

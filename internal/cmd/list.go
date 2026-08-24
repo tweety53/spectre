@@ -50,7 +50,7 @@ func List(args []string, stdout, stderr io.Writer) int {
 		return OK
 	}
 
-	changes, err := t.Changes(false)
+	changes, err := t.Changes()
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return Usage
