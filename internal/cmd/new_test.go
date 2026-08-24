@@ -70,6 +70,26 @@ func TestNewRequiresID(t *testing.T) {
 	}
 }
 
+// TestNewRejectsArchiveID pins the final-review fix: a change id equal to
+// the archive directory's own name must be rejected, since a change
+// scaffolded there is invisible to list, validate and archive.
+func TestNewRejectsArchiveID(t *testing.T) {
+	base := emptyTree(t)
+	var out, errBuf bytes.Buffer
+	if code := New([]string{"--root", base, "archive"}, &out, &errBuf); code != Usage {
+		t.Fatalf("exit = %d, want %d, stderr = %s", code, Usage, errBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), "archive") {
+		t.Errorf("stderr = %q, want it to name the archive directory", errBuf.String())
+	}
+	if _, err := os.Stat(filepath.Join(base, "spectre", "changes", "archive", "proposal.md")); !os.IsNotExist(err) {
+		t.Error("scaffold files were written into the archive directory")
+	}
+	if _, err := os.Stat(filepath.Join(base, "spectre", "changes", "archive")); !os.IsNotExist(err) {
+		t.Error("archive directory should not have been created")
+	}
+}
+
 func TestNewRejectsInvalidID(t *testing.T) {
 	tests := []struct {
 		name string

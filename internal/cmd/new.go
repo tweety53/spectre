@@ -45,6 +45,16 @@ func New(args []string, stdout, stderr io.Writer) int {
 		return Usage
 	}
 
+	// The archive directory's own name is reserved: a change scaffolded
+	// under it would sit inside changes/archive/ but be invisible to
+	// list, validate and archive, which all treat that name specially.
+	// Derived from the tree rather than hardcoded, so a configured
+	// changes layout still rejects the right name.
+	if archiveName := filepath.Base(t.ArchiveDir()); id == archiveName {
+		fmt.Fprintf(stderr, "invalid change id: %q is reserved for the archive directory\n", id)
+		return Usage
+	}
+
 	dir := filepath.Join(t.ChangesDir(), id)
 	if _, err := os.Stat(dir); err == nil {
 		fmt.Fprintf(stderr, "%s already exists\n", dir)
