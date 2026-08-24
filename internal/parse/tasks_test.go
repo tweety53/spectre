@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/tweety53/spectre/internal/config"
 )
 
 func TestTasksFile(t *testing.T) {
@@ -17,7 +19,8 @@ func TestTasksFile(t *testing.T) {
 	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got, err := TasksFile(p)
+	parser := New(config.Default())
+	got, err := parser.TasksFile(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +36,8 @@ func TestTasksFile(t *testing.T) {
 }
 
 func TestTasksFileMissing(t *testing.T) {
-	if _, err := TasksFile(filepath.Join(t.TempDir(), "nope.md")); err == nil {
+	parser := New(config.Default())
+	if _, err := parser.TasksFile(filepath.Join(t.TempDir(), "nope.md")); err == nil {
 		t.Fatal("want error for missing file")
 	}
 }
@@ -44,7 +48,8 @@ func TestTasksFileEmpty(t *testing.T) {
 	if err := os.WriteFile(p, []byte("# Tasks\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got, err := TasksFile(p)
+	parser := New(config.Default())
+	got, err := parser.TasksFile(p)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,24 +5,21 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/tweety53/spectre/internal/model"
 )
 
-var _reqRe = regexp.MustCompile(`^- (R(\d+)): (.*)$`)
-
 // SpecFile reads one capability file into a model.Spec.
-func SpecFile(path string) (model.Spec, error) {
+func (p *Parser) SpecFile(path string) (model.Spec, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return model.Spec{}, err
 	}
 
 	spec := model.Spec{
-		Capability: strings.TrimSuffix(filepath.Base(path), ".md"),
+		Capability: strings.TrimSuffix(filepath.Base(path), p.cfg.Extension),
 		Path:       path,
 		Raw:        raw,
 	}
@@ -45,7 +42,7 @@ func SpecFile(path string) (model.Spec, error) {
 		case "Purpose":
 			purpose = append(purpose, t)
 		case "Requirements":
-			if m := _reqRe.FindStringSubmatch(t); m != nil {
+			if m := p.reqRe.FindStringSubmatch(t); m != nil {
 				// The regex only captures \d+, so Atoi fails only on
 				// overflow; num then stays 0, which the sequencing checks
 				// in check.SpecFindings report as out of sequence.
@@ -54,7 +51,7 @@ func SpecFile(path string) (model.Spec, error) {
 					ID:   m[1],
 					Num:  num,
 					Text: m[3],
-					Refs: Refs(t, line),
+					Refs: p.Refs(t, line),
 					Line: line,
 				})
 				continue
@@ -74,3 +71,10 @@ func SpecFile(path string) (model.Spec, error) {
 	spec.Purpose = strings.TrimSpace(strings.Join(purpose, "\n"))
 	return spec, nil
 }
+
+// SpecFile reads one capability file into a model.Spec using the default
+// configuration.
+//
+// Deprecated: build a *Parser via New and call its SpecFile method — a
+// *tree.Tree carries one configured for its own tree.
+func SpecFile(path string) (model.Spec, error) { return defaultParser.SpecFile(path) }

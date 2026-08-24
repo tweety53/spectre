@@ -11,8 +11,9 @@ import (
 
 var _taskRe = regexp.MustCompile(`^- \[([ x])\] (\d+)\. (.*)$`)
 
-// TasksFile reads a change's tasks.md.
-func TasksFile(path string) ([]model.Task, error) {
+// TasksFile reads a change's tasks.md. Task numbering is not
+// configurable, so this does not depend on p's configuration.
+func (p *Parser) TasksFile(path string) ([]model.Task, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -42,3 +43,9 @@ func TasksFile(path string) ([]model.Task, error) {
 	}
 	return out, sc.Err()
 }
+
+// TasksFile reads a change's tasks.md using the default configuration.
+//
+// Deprecated: build a *Parser via New and call its TasksFile method — a
+// *tree.Tree carries one configured for its own tree.
+func TasksFile(path string) ([]model.Task, error) { return defaultParser.TasksFile(path) }

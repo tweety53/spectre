@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/tweety53/spectre/internal/config"
 )
 
 func writeSpec(t *testing.T, body string) string {
@@ -28,7 +30,8 @@ Sessions and tokens.
 - R2: The picker SHALL show enabled plans (@gymie:plans#R7)
 `)
 
-	got, err := SpecFile(p)
+	parser := New(config.Default())
+	got, err := parser.SpecFile(p)
 	if err != nil {
 		t.Fatalf("SpecFile: %v", err)
 	}
@@ -70,7 +73,8 @@ Sessions and tokens.
 }
 
 func TestRefsScopes(t *testing.T) {
-	refs := Refs("- R3: See (@R1) and (@plans#R2) and (@gymie:plans#R4)", 12)
+	parser := New(config.Default())
+	refs := parser.Refs("- R3: See (@R1) and (@plans#R2) and (@gymie:plans#R4)", 12)
 	if len(refs) != 3 {
 		t.Fatalf("len = %d, want 3", len(refs))
 	}
@@ -91,7 +95,8 @@ func TestRefsScopes(t *testing.T) {
 }
 
 func TestSpecFileMissing(t *testing.T) {
-	if _, err := SpecFile(filepath.Join(t.TempDir(), "nope.md")); err == nil {
+	parser := New(config.Default())
+	if _, err := parser.SpecFile(filepath.Join(t.TempDir(), "nope.md")); err == nil {
 		t.Fatal("want error for missing file")
 	}
 }
