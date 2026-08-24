@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tweety53/spectre/internal/testtree"
 	"github.com/tweety53/spectre/internal/tree"
 )
 
@@ -14,28 +15,8 @@ import (
 func twoTrees(t *testing.T, appSpecs, gymieSpecs map[string]string, peers string) *tree.Tree {
 	t.Helper()
 	parent := t.TempDir()
-	build := func(name string, specs map[string]string) string {
-		base := filepath.Join(parent, name)
-		if err := os.MkdirAll(filepath.Join(base, "spectre", "specs"), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.MkdirAll(filepath.Join(base, "spectre", "changes"), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		for cap, body := range specs {
-			if err := os.WriteFile(filepath.Join(base, "spectre", "specs", cap+".md"), []byte(body), 0o644); err != nil {
-				t.Fatal(err)
-			}
-		}
-		return base
-	}
-	app := build("app", appSpecs)
-	build("gymie", gymieSpecs)
-	if peers != "" {
-		if err := os.WriteFile(filepath.Join(app, "spectre", "peers"), []byte(peers), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
+	app := testtree.Build(t, parent, "app", appSpecs, peers)
+	testtree.Build(t, parent, "gymie", gymieSpecs, "")
 	tr, err := tree.Find(app)
 	if err != nil {
 		t.Fatal(err)

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/tweety53/spectre/internal/testtree"
 )
 
 // twoTreesCmd builds app/ and gymie/ as siblings, each a spectre tree,
@@ -13,29 +15,11 @@ import (
 func twoTreesCmd(t *testing.T) string {
 	t.Helper()
 	parent := t.TempDir()
-	mk := func(name string, specs map[string]string, peers string) string {
-		base := filepath.Join(parent, name)
-		if err := os.MkdirAll(filepath.Join(base, "spectre", "specs"), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.MkdirAll(filepath.Join(base, "spectre", "changes"), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		for capName, body := range specs {
-			if err := os.WriteFile(filepath.Join(base, "spectre", "specs", capName+".md"), []byte(body), 0o644); err != nil {
-				t.Fatal(err)
-			}
-		}
-		if err := os.WriteFile(filepath.Join(base, "spectre", "peers"), []byte(peers), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		return base
-	}
-	app := mk("app", map[string]string{
+	app := testtree.Build(t, parent, "app", map[string]string{
 		"auth":  "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a.\n",
 		"plans": "# plans\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL b.\n- R2: The system SHALL c (@auth#R1).\n",
 	}, "gymie ../gymie\n")
-	mk("gymie", map[string]string{
+	testtree.Build(t, parent, "gymie", map[string]string{
 		"billing": "# billing\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL d (@app:auth#R1).\n",
 	}, "app ../app\n")
 	return app
