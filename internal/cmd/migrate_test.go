@@ -136,3 +136,60 @@ func TestMigrateWarnsOnMissingSHALL(t *testing.T) {
 		t.Errorf("report = %s", stdout.String())
 	}
 }
+
+func TestMigrateForceClearsStaleFiles(t *testing.T) {
+	base := filepath.Join(t.TempDir(), "openspec")
+	mk := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(base, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mk("specs/auth/spec.md", "# auth Specification\n\n## Purpose\nSessions.\n\n## Requirements\n\n### Requirement: The system SHALL refresh tokens\n\nRefresh happens before expiry.\n")
+	mk("specs/beta/spec.md", "# beta Specification\n\n## Purpose\nOther.\n\n## Requirements\n\n### Requirement: The system SHALL do a thing\n\nBody.\n")
+
+	out := filepath.Join(t.TempDir(), "spectre")
+	var stdout, stderr bytes.Buffer
+	if code := Migrate([]string{"--out", out, base}, &stdout, &stderr); code != OK {
+		t.Fatalf("first migrate exit = %d\nstdout: %s\nstderr: %s", code, stdout.String(), stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(out, "specs", "beta.md")); err != nil {
+		t.Fatalf("expected specs/beta.md after first migrate: %v", err)
+	}
+
+	if err := os.RemoveAll(filepath.Join(base, "specs", "beta")); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	if code := Migrate([]string{"--out", out, "--force", base}, &stdout, &stderr); code != OK {
+		t.Fatalf("forced migrate exit = %d\nstdout: %s\nstderr: %s", code, stdout.String(), stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(out, "specs", "beta.md")); !os.IsNotExist(err) {
+		t.Errorf("stale specs/beta.md survived --force: err = %v", err)
+	}
+	if !strings.Contains(stdout.String(), "cleared") {
+		t.Errorf("report does not name what --force cleared:\n%s", stdout.String())
+	}
+}
+
+func TestMigrateWarnsOnPlaceholderPurpose(t *testing.T) {
+	src := openspecTree(t)
+	if err := os.WriteFile(filepath.Join(src, "specs", "auth", "spec.md"),
+		[]byte("# auth Specification\n\n## Purpose\nTBD\n\n## Requirements\n\n### Requirement: The system SHALL refresh tokens\n\nRefresh happens before expiry.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "spectre")
+	var stdout, stderr bytes.Buffer
+	if code := Migrate([]string{"--out", out, src}, &stdout, &stderr); code != Fail {
+		t.Fatalf("exit = %d, want %d", code, Fail)
+	}
+	if !strings.Contains(stdout.String(), `placeholder "TBD"`) {
+		t.Errorf("report missing the placeholder finding:\n%s", stdout.String())
+	}
+}

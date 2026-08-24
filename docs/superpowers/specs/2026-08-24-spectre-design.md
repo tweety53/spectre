@@ -203,6 +203,12 @@ incomplete. Resolving those files is a human edit against the migrated spec.
 Every run prints a report: files written, requirements converted, tasks renumbered, and each
 warning with its source path.
 
+After writing, `migrate` validates the tree it produced and appends every finding to that report as
+a warning. Exit 0 therefore means the migrated tree validates, not merely that files were written —
+otherwise a user could fix every reported warning and still hold a tree `validate` rejects. `--force`
+clears `specs/` and `changes/` in the target before writing, and nothing else, so a re-migration
+cannot leave files from a source that has since changed.
+
 ## Validation rules and exit codes
 
 Findings print as `file:line: message`. Exit 0 clean, 1 findings, 2 usage or IO error.

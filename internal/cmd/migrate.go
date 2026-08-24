@@ -7,9 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tweety53/spectre/internal/check"
 	"github.com/tweety53/spectre/internal/model"
 	"github.com/tweety53/spectre/internal/openspec"
 	"github.com/tweety53/spectre/internal/render"
+	"github.com/tweety53/spectre/internal/tree"
 )
 
 // Migrate converts an OpenSpec tree into a new spectre tree. It never
@@ -35,9 +37,19 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 		}
 		dst = filepath.Join(wd, "spectre")
 	}
-	if _, err := os.Stat(dst); err == nil && !*force {
-		fmt.Fprintf(stderr, "%s already exists (use --force to write into it)\n", dst)
-		return Fail
+	if _, err := os.Stat(dst); err == nil {
+		if !*force {
+			fmt.Fprintf(stderr, "%s already exists (use --force to write into it)\n", dst)
+			return Fail
+		}
+		cleared, err := clearForce(dst)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return Usage
+		}
+		if len(cleared) > 0 {
+			fmt.Fprintf(stdout, "--force: cleared %s in %s\n", strings.Join(cleared, " and "), dst)
+		}
 	}
 
 	var warnings []string
@@ -54,9 +66,6 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 	for _, s := range specs {
 		converted := model.Spec{Capability: s.Capability, Purpose: s.Purpose}
 		for i, r := range s.Reqs {
-			if !strings.Contains(r.Title, " SHALL ") {
-				warnings = append(warnings, fmt.Sprintf("specs/%s.md: R%d (%q) has no SHALL clause — edit before validating", s.Capability, i+1, r.Title))
-			}
 			converted.Reqs = append(converted.Reqs, model.Requirement{
 				ID:    fmt.Sprintf("R%d", i+1),
 				Num:   i + 1,
@@ -121,6 +130,25 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 		return Usage
 	}
 
+	// The promise of a clean exit is that the written tree validates, so
+	// migrate runs exactly the checks "spectre validate" runs over a whole
+	// tree and reports every finding as a warning, rather than reimplementing
+	// any of check's rules itself.
+	dstTree := &tree.Tree{Root: dst}
+	declaredPeers, err := dstTree.Peers()
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return Usage
+	}
+	findings, err := check.Structural(dstTree, "", resolvePeers(declaredPeers))
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return Usage
+	}
+	for _, f := range findings {
+		warnings = append(warnings, f.String())
+	}
+
 	fmt.Fprintf(stdout, "migrated %d spec(s), %d open change(s), %d archived file(s) into %s\n", len(specs), len(changes), archived, dst)
 	for _, w := range warnings {
 		fmt.Fprintf(stdout, "warning: %s\n", w)
@@ -130,6 +158,28 @@ func Migrate(args []string, stdout, stderr io.Writer) int {
 		return Fail
 	}
 	return OK
+}
+
+// clearForce removes dst's specs/ and changes/ subdirectories, if present,
+// so a --force re-run cannot leave a stale file behind from a capability or
+// change that no longer exists in the source. It touches only those two
+// paths, never dst itself, so any other file a user has already placed in
+// dst (a config.md, a peers file) survives. It returns the names cleared,
+// for the report.
+func clearForce(dst string) ([]string, error) {
+	var cleared []string
+	for _, name := range []string{"specs", "changes"} {
+		p := filepath.Join(dst, name)
+		if _, err := os.Stat(p); err == nil {
+			if err := os.RemoveAll(p); err != nil {
+				return nil, err
+			}
+			cleared = append(cleared, name+"/")
+		} else if !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+	return cleared, nil
 }
 
 // copyDir copies src to dst verbatim, returning the number of files
