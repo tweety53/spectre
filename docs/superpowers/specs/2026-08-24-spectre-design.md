@@ -156,6 +156,12 @@ time is the failure this tool exists to prevent, so it is read and then named.
 | `spectre refs <capability>#<id>` | Prints every citation of a requirement, scanning this tree and each declared peer, and prints which trees it scanned. |
 | `spectre migrate <openspec-dir>` | Optional. Converts an existing OpenSpec tree into a spectre tree. Never required by any other command. |
 
+A peer that cannot be read is skipped and marked in the `scanned:` line — `<name> (unreadable: <err>)`
+beside `<name> (not present)` — and `refs` still exits 0. A neighbour's broken tree bounds the
+answer's scope rather than failing the query, and the scanned line is where the user reads that
+bound. Only a local failure — a bad argument, an unresolvable root, this tree's own unreadable files
+— exits non-zero.
+
 `refs` earns its place as the fifth command because without it a requirement's dependants only
 surface when someone else runs `validate` — you would be deleting and renumbering requirements
 blind. Its completeness depends on the neighbour declaring you in its own `peers` file; that is a
