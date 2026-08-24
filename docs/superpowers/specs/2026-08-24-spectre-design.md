@@ -145,6 +145,59 @@ A citation naming a peer but no capability — `(@gymie:R4)` — is reported as 
 resolved or ignored. The parser admits the shape deliberately: a citation silently dropped at parse
 time is the failure this tool exists to prevent, so it is read and then named.
 
+## Per-repository configuration
+
+`spectre/config.md` tunes spectre's behaviour for one tree. It is optional: an absent file means
+every default below, and a tree that never adds one behaves exactly as the rest of this document
+describes.
+
+```markdown
+# spectre config
+
+## Rules
+- headings: error
+- placeholders: error
+- shall-clause: error
+- malformed-bullet: error
+- id-sequence: error
+- task-sequence: error
+- refs: error
+
+## Vocabulary
+- modal: SHALL
+- id-prefix: R
+
+## Layout
+- specs: specs
+- changes: changes
+- extension: .md
+```
+
+Markdown, and the same bullet shape the spec format uses: `- <key>: <value>` under a section
+heading. Keys are fixed and closed — an unknown key, an unknown rule name or an unrecognised value
+is an error that exits 2, because a typo that silently disables a rule is the failure this file
+would otherwise introduce. A key set twice is an error naming both lines, on the same reasoning as a
+repeated `peers` name: taking the last of two conflicting settings decides the tool's behaviour by
+file order. Headings and bullets inside fenced code blocks are ignored, as everywhere else in
+spectre — a config file is the likeliest place in the tool for someone to write an example, and an
+example must not change what runs.
+
+| Section | Key | Values | Default | Effect |
+|---------|-----|--------|---------|--------|
+| Rules | any rule name above | `error`, `off` | `error` | whether that validation rule produces findings |
+| Vocabulary | `modal` | any word | `SHALL` | the modal verb a requirement bullet must contain |
+| Vocabulary | `id-prefix` | letters | `R` | requirement id prefix, so `REQ-1` is as legal as `R1` |
+| Layout | `specs` | relative path | `specs` | where capability files live inside the tree |
+| Layout | `changes` | relative path | `changes` | where change folders live inside the tree |
+| Layout | `extension` | file extension | `.md` | the spec file extension |
+
+Severity has two values, not three: a rule either produces findings or it does not. A third
+"warning" tier would need a third exit code, and the exit contract has no room for one.
+
+Configuration is per tree, and a peer's own `config.md` governs how that peer's files are read. A
+tree using `REQ-` ids can therefore be cited from a tree using `R` ids: each side parses its own
+files by its own rules, and a reference carries the id as written.
+
 ## Commands
 
 | Command | Behaviour |
@@ -269,7 +322,8 @@ parsing the markdown.
 
 ## Non-goals
 
-No delta specs and no archive-time merge-back. No configuration file beyond `peers`. No status
+No delta specs and no archive-time merge-back. No configuration beyond `peers` and the optional
+`config.md` above — in particular no configuration of what `new` scaffolds, which stays compiled in. No status
 field, assignee or timestamps. No network access, daemon or server. No `instructions` command:
 conventions live in whatever skill drives spectre, not in the binary.
 
