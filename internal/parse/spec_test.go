@@ -27,7 +27,7 @@ Sessions and tokens.
 ## Requirements
 - R1: The system SHALL refresh the token before expiry.
   Refresh happens on the request path.
-- R2: The picker SHALL show enabled plans (@gymie:plans#R7)
+- R2: The picker SHALL show enabled plans (@web:plans#R7)
 `)
 
 	parser := New(config.Default())
@@ -64,17 +64,17 @@ Sessions and tokens.
 		t.Fatalf("len(r2.Refs) = %d, want 1", len(r2.Refs))
 	}
 	ref := r2.Refs[0]
-	if ref.Peer != "gymie" || ref.Capability != "plans" || ref.ID != "R7" {
+	if ref.Peer != "web" || ref.Capability != "plans" || ref.ID != "R7" {
 		t.Errorf("ref = %+v", ref)
 	}
-	if ref.Raw != "@gymie:plans#R7" {
+	if ref.Raw != "@web:plans#R7" {
 		t.Errorf("ref.Raw = %q", ref.Raw)
 	}
 }
 
 func TestRefsScopes(t *testing.T) {
 	parser := New(config.Default())
-	refs := parser.Refs("- R3: See (@R1) and (@plans#R2) and (@gymie:plans#R4)", 12)
+	refs := parser.Refs("- R3: See (@R1) and (@plans#R2) and (@web:plans#R4)", 12)
 	if len(refs) != 3 {
 		t.Fatalf("len = %d, want 3", len(refs))
 	}
@@ -84,7 +84,7 @@ func TestRefsScopes(t *testing.T) {
 	if refs[1].Peer != "" || refs[1].Capability != "plans" || refs[1].ID != "R2" {
 		t.Errorf("same-tree ref = %+v", refs[1])
 	}
-	if refs[2].Peer != "gymie" || refs[2].Capability != "plans" || refs[2].ID != "R4" {
+	if refs[2].Peer != "web" || refs[2].Capability != "plans" || refs[2].ID != "R4" {
 		t.Errorf("cross-tree ref = %+v", refs[2])
 	}
 	for _, r := range refs {

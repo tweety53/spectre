@@ -26,7 +26,7 @@ type Ref struct {
 	Peer       string
 	Capability string
 	ID         string
-	Raw        string // "@gymie:plans#R7"
+	Raw        string // "@web:plans#R7"
 	Line       int
 }
 

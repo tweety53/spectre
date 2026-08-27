@@ -7,7 +7,7 @@ import (
 )
 
 func TestResolvePeerNotDeclared(t *testing.T) {
-	rp := ResolvePeer(map[string]string{}, "gymie")
+	rp := ResolvePeer(map[string]string{}, "web")
 	if rp.Resolution != PeerNotDeclared {
 		t.Errorf("Resolution = %v, want PeerNotDeclared", rp.Resolution)
 	}
@@ -15,7 +15,7 @@ func TestResolvePeerNotDeclared(t *testing.T) {
 
 func TestResolvePeerNotPresent(t *testing.T) {
 	parent := t.TempDir()
-	rp := ResolvePeer(map[string]string{"gymie": filepath.Join(parent, "gymie", "spectre")}, "gymie")
+	rp := ResolvePeer(map[string]string{"web": filepath.Join(parent, "web", "spectre")}, "web")
 	if rp.Resolution != PeerNotPresent {
 		t.Errorf("Resolution = %v, want PeerNotPresent", rp.Resolution)
 	}
@@ -26,7 +26,7 @@ func TestResolvePeerUnreadable(t *testing.T) {
 		t.Skip("root ignores file permissions")
 	}
 	parent := t.TempDir()
-	path := makeTree(t, filepath.Join(parent, "gymie"))
+	path := makeTree(t, filepath.Join(parent, "web"))
 	root := filepath.Join(path, "spectre")
 	// Block traversal into path so Stat(root) fails with a permission error
 	// rather than not-exist.
@@ -35,7 +35,7 @@ func TestResolvePeerUnreadable(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(path, 0o755) })
 
-	rp := ResolvePeer(map[string]string{"gymie": root}, "gymie")
+	rp := ResolvePeer(map[string]string{"web": root}, "web")
 	if rp.Resolution != PeerUnreadable {
 		t.Errorf("Resolution = %v, want PeerUnreadable", rp.Resolution)
 	}
@@ -46,14 +46,14 @@ func TestResolvePeerUnreadable(t *testing.T) {
 
 func TestResolvePeerFound(t *testing.T) {
 	parent := t.TempDir()
-	path := makeTree(t, filepath.Join(parent, "gymie"))
+	path := makeTree(t, filepath.Join(parent, "web"))
 	root := filepath.Join(path, "spectre")
 	spec := "# billing\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL d.\n"
 	if err := os.WriteFile(filepath.Join(root, "specs", "billing.md"), []byte(spec), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	rp := ResolvePeer(map[string]string{"gymie": root}, "gymie")
+	rp := ResolvePeer(map[string]string{"web": root}, "web")
 	if rp.Resolution != PeerFound {
 		t.Fatalf("Resolution = %v, want PeerFound", rp.Resolution)
 	}
@@ -70,7 +70,7 @@ func TestResolvePeerSpecsUnreadable(t *testing.T) {
 		t.Skip("root ignores file permissions")
 	}
 	parent := t.TempDir()
-	path := makeTree(t, filepath.Join(parent, "gymie"))
+	path := makeTree(t, filepath.Join(parent, "web"))
 	root := filepath.Join(path, "spectre")
 	spec := "# billing\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL d.\n"
 	specPath := filepath.Join(root, "specs", "billing.md")
@@ -85,7 +85,7 @@ func TestResolvePeerSpecsUnreadable(t *testing.T) {
 	// The path stats fine and Open succeeds; only reading the spec file
 	// fails, so ResolvePeer must classify this as PeerUnreadable itself
 	// rather than leaving Specs()-load failures for the caller to detect.
-	rp := ResolvePeer(map[string]string{"gymie": root}, "gymie")
+	rp := ResolvePeer(map[string]string{"web": root}, "web")
 	if rp.Resolution != PeerUnreadable {
 		t.Errorf("Resolution = %v, want PeerUnreadable", rp.Resolution)
 	}

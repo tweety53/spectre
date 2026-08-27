@@ -19,6 +19,59 @@ func makeTree(t *testing.T, dir string) string {
 	return dir
 }
 
+func TestRootPath(t *testing.T) {
+	tests := []struct {
+		name string
+		// setup builds the RootPath input and the expected absolute
+		// output, both rooted under an isolated t.TempDir().
+		setup func(t *testing.T, base string) (root, want string)
+	}{
+		{
+			name: "relative path without spectre basename gains it",
+			setup: func(t *testing.T, base string) (string, string) {
+				t.Chdir(base)
+				return "myproj", filepath.Join(base, "myproj", "spectre")
+			},
+		},
+		{
+			name: "path already ending in spectre is unchanged",
+			setup: func(t *testing.T, base string) (string, string) {
+				t.Chdir(base)
+				return "spectre", filepath.Join(base, "spectre")
+			},
+		},
+		{
+			name: "dot resolves to cwd/spectre",
+			setup: func(t *testing.T, base string) (string, string) {
+				t.Chdir(base)
+				return ".", filepath.Join(base, "spectre")
+			},
+		},
+		{
+			name: "absolute path is handled the same as a relative one",
+			setup: func(t *testing.T, base string) (string, string) {
+				abs := filepath.Join(base, "myproj")
+				return abs, filepath.Join(abs, "spectre")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := t.TempDir()
+			root, want := tt.setup(t, base)
+
+			got, err := RootPath(root)
+			if err != nil {
+				t.Fatalf("RootPath(%q): %v", root, err)
+			}
+			if got != want {
+				t.Errorf("RootPath(%q) = %q, want %q", root, got, want)
+			}
+		})
+	}
+}
+
 func TestFindWalksUp(t *testing.T) {
 	base := makeTree(t, t.TempDir())
 	deep := filepath.Join(base, "internal", "pkg")
@@ -43,12 +96,25 @@ func TestFindNoRoot(t *testing.T) {
 	}
 }
 
+func TestErrNoRootNamesInit(t *testing.T) {
+	_, err := Find(t.TempDir())
+	if err == nil {
+		t.Fatal("Find: want error, got nil")
+	}
+	if !strings.Contains(err.Error(), "spectre init") {
+		t.Errorf("err = %q, want it to contain %q", err.Error(), "spectre init")
+	}
+	if !errors.Is(err, ErrNoRoot) {
+		t.Fatalf("err = %v, want ErrNoRoot", err)
+	}
+}
+
 func TestPeers(t *testing.T) {
 	parent := t.TempDir()
 	me := makeTree(t, filepath.Join(parent, "app"))
-	other := makeTree(t, filepath.Join(parent, "gymie"))
+	other := makeTree(t, filepath.Join(parent, "web"))
 
-	body := "# neighbours\ngymie ../gymie\n\n"
+	body := "# neighbours\nweb ../web\n\n"
 	if err := os.WriteFile(filepath.Join(me, "spectre", "peers"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -64,9 +130,9 @@ func TestPeers(t *testing.T) {
 		t.Fatalf("len = %d, want 1", len(peers))
 	}
 	want, _ := filepath.EvalSymlinks(filepath.Join(other, "spectre"))
-	got, _ := filepath.EvalSymlinks(peers["gymie"])
+	got, _ := filepath.EvalSymlinks(peers["web"])
 	if got != want {
-		t.Errorf("peers[gymie] = %q, want %q", got, want)
+		t.Errorf("peers[web] = %q, want %q", got, want)
 	}
 }
 
@@ -87,10 +153,10 @@ func TestPeersAbsent(t *testing.T) {
 func TestPeersDuplicateName(t *testing.T) {
 	parent := t.TempDir()
 	me := makeTree(t, filepath.Join(parent, "app"))
-	makeTree(t, filepath.Join(parent, "gymie"))
+	makeTree(t, filepath.Join(parent, "web"))
 	makeTree(t, filepath.Join(parent, "other"))
 
-	body := "gymie ../gymie\nother ../other\ngymie ../other\n"
+	body := "web ../web\nother ../other\nweb ../other\n"
 	if err := os.WriteFile(filepath.Join(me, "spectre", "peers"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}

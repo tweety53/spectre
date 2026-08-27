@@ -13,15 +13,14 @@ const _usage = `spectre — spec-driven change tracking in markdown
 usage: spectre <command> [flags] [args]
 
 commands:
+  init [--root <path>]         create specs/, changes/ and config.md
   new <change-id>              scaffold changes/<id>/
   list [--specs] [--json]      list open changes, or capabilities
   validate [change-id]         check the tree, or one change
   refs <capability>#<id>       find citations of a requirement
   archive <change-id>          move a finished change into changes/archive/
-  migrate <openspec-dir>       convert an OpenSpec tree into a new spectre tree
 
-every command except migrate accepts --root <path> to name the tree
-explicitly; migrate takes a source path and --out instead
+every command accepts --root <path> to name the tree explicitly
 `
 
 func main() {
@@ -31,6 +30,8 @@ func main() {
 	}
 	args := os.Args[2:]
 	switch os.Args[1] {
+	case "init":
+		os.Exit(cmd.Init(args, os.Stdout, os.Stderr))
 	case "new":
 		os.Exit(cmd.New(args, os.Stdout, os.Stderr))
 	case "list":
@@ -41,8 +42,6 @@ func main() {
 		os.Exit(cmd.Refs(args, os.Stdout, os.Stderr))
 	case "archive":
 		os.Exit(cmd.Archive(args, os.Stdout, os.Stderr))
-	case "migrate":
-		os.Exit(cmd.Migrate(args, os.Stdout, os.Stderr))
 	case "-h", "--help", "help":
 		fmt.Fprint(os.Stdout, _usage)
 		os.Exit(cmd.OK)

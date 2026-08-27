@@ -66,19 +66,19 @@ func TestValidateReportsUnreadablePeer(t *testing.T) {
 	}
 	parent := t.TempDir()
 	app := testtree.Build(t, parent, "app", map[string]string{
-		"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@gymie:billing#R1).\n",
-	}, "gymie ../gymie\n")
-	gymie := testtree.Build(t, parent, "gymie", map[string]string{
+		"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@web:billing#R1).\n",
+	}, "web ../web\n")
+	web := testtree.Build(t, parent, "web", map[string]string{
 		"billing": "# billing\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL d.\n",
 	}, "")
-	// Block traversal into gymie so Stat(gymie/spectre) fails with a
+	// Block traversal into web so Stat(web/spectre) fails with a
 	// permission error rather than not-exist — a different failure mode
 	// than the existing tests, which chmod a spec file inside an otherwise
 	// reachable peer tree.
-	if err := os.Chmod(gymie, 0o000); err != nil {
+	if err := os.Chmod(web, 0o000); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(gymie, 0o755) })
+	t.Cleanup(func() { _ = os.Chmod(web, 0o755) })
 
 	var out, errBuf bytes.Buffer
 	code := Validate([]string{"--root", app}, &out, &errBuf)
