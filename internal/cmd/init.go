@@ -82,7 +82,7 @@ func Init(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, err)
 			return Usage
 		}
-		fmt.Fprintf(stdout, "created %s\n", dir)
+		fmt.Fprintf(stdout, "created %s\n", displayPath(dir))
 		created = true
 	}
 
@@ -92,7 +92,7 @@ func Init(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, err)
 			return Usage
 		}
-		fmt.Fprintf(stdout, "created %s\n", configPath)
+		fmt.Fprintf(stdout, "created %s\n", displayPath(configPath))
 		created = true
 	}
 

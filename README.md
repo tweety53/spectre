@@ -3,52 +3,42 @@
 Spec-driven change tracking in markdown. One binary, no dependencies, no database: the tree on
 disk is the entire state.
 
-## Install
+## Quick start
 
-```bash
-go install github.com/tweety53/spectre/cmd/spectre@latest
-```
+spectre is meant to be driven by an AI coding agent, not typed at by hand: hand it each prompt
+below and it runs the `spectre` commands itself. This is the short path — the full walkthrough,
+with every prompt and every generated file body in full, is [docs/example.md](docs/example.md).
+Claude Code users can instead run `/spectre` and `/spectre-new`, shipped in this repository's
+[.claude/skills/](.claude/skills/).
 
-Or build locally: `go build -o bin/spectre ./cmd/spectre`.
+Install first: `go install github.com/tweety53/spectre/cmd/spectre@latest`, or build locally with
+`go build -o bin/spectre ./cmd/spectre`.
 
-## Getting started
+Then, one prompt per step:
 
-A spectre tree lives inside a git repository: `archive` moves a finished change with `git mv`, so
-both the repository and the change's files have to exist in git before you can archive anything.
+1. *Set up a spectre tree in the current directory* (run `git init` first if it isn't already a
+   git repository, then `spectre init`) — see [step 1](docs/example.md#1-create-the-tree).
+2. *Scaffold the change* with `spectre new <change-id>` (`new` refuses to run until the tree from
+   step 1 exists — it does not create one for you) — see
+   [step 2](docs/example.md#2-scaffold-the-change).
+3. *Write the capability spec, then `proposal.md`, `tasks.md` and `design.md`, each following the
+   required headings its row gives in [File templates](#file-templates)* — see
+   [steps 3–6](docs/example.md#3-write-the-capability-spec) for the worked bodies.
+4. *Run `spectre validate` and confirm no findings* — see
+   [step 7](docs/example.md#7-validate-the-finished-change).
+5. Implement the change, one task at a time: *"implement task 1"*, then the project's own build
+   and tests, then *"tick task 1's box"*, then commit — repeated per task. This loop, not any
+   single `spectre` command, is the bulk of a real change; see
+   [step 8](docs/example.md#8-work-the-tasks).
+6. Stage the change (`git add spectre` — `archive` moves it with `git mv`, which needs the tree
+   inside a git repository with the change's files already tracked) and *archive it* with `spectre
+   archive <change-id>` — see [step 9](docs/example.md#9-archive-the-finished-change).
 
-```bash
-git init                              # if this isn't already a git repository
-spectre init
-```
-
-`spectre init` creates a plain directory named `spectre` holding `specs/`, `changes/` and a
-`config.md` of commented defaults; it fills in whatever's missing and never overwrites what's
-already there.
-
-`spectre new` refuses to run until that directory exists — it will not create the tree for you,
-only scaffold changes inside one:
-
-```bash
-spectre new my-change
-# created spectre/changes/my-change
-```
-
-Stage what `new` wrote — and every file you add or edit inside the tree afterwards — so `archive`
-has something to move later:
-
-```bash
-git add spectre
-```
-
-Every command searches upwards from the working directory for a directory literally named
-`spectre`. `--root <path>` names one explicitly instead of searching, and — because Go's `flag`
-package stops parsing flags at the first positional argument — `--root` must come **before** any
-positional argument:
-
-```bash
-spectre validate --root . my-change    # works
-spectre validate my-change --root .    # fails: --root is read as a second positional argument
-```
+One flag-order rule applies to every command: without it, every command searches upwards from the
+working directory for a directory literally named `spectre`; `--root <path>` names the tree
+explicitly instead of searching for it. And because Go's `flag` package stops parsing flags at the
+first positional argument, `--root` must come **before** the change id, e.g. `spectre validate
+--root . my-change`, not after it.
 
 ## The tree
 
@@ -59,9 +49,27 @@ spectre/
   specs/<capability>.md       # long-lived capability specs
   changes/<id>/proposal.md    # why, and what changes
              /tasks.md        # "- [ ] 1. ..." — the only progress signal
-             /design.md       # optional, unparsed
+             /design.md       # context and decisions; validated when present
   changes/archive/<id>/
 ```
+
+`new` scaffolds all three files under `changes/<id>/` — see [file templates](#file-templates) below
+for the headings each one must carry.
+
+## File templates
+
+`validate` checks that each generated file carries its required headings, in order; a file is free
+to carry extra headings beyond these.
+
+| File | Required headings, in order |
+|---|---|
+| `proposal.md` | `# <change-id>`, `## Why`, `## What changes` |
+| `tasks.md` | `# <change-id>` |
+| `design.md` | `## Context`, `## Decisions` — checked only when the file exists; it stays optional |
+| `specs/<capability>.md` | `# <capability>`, `## Purpose`, `## Requirements` — see [spec format](docs/spec-format.md) |
+
+`tasks.md` is also checked for having at least one task: a freshly scaffolded change reports `no
+tasks` under `task-sequence` until a task is added.
 
 ## Commands
 

@@ -11,8 +11,27 @@ import (
 	"github.com/tweety53/spectre/internal/config"
 )
 
+// TestInitCreatesTree also pins task 9: init prints created paths relative
+// to the working directory rather than the tree's absolute root, matching
+// the docs (docs/example.md, README.md) this task makes true. base is
+// created under the working directory (not t.TempDir(), which is not) so
+// every "created" line must be relative — asserted with an exact stdout
+// comparison, never a substring match that would also accept the absolute
+// form.
 func TestInitCreatesTree(t *testing.T) {
-	base := t.TempDir()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	base, err := os.MkdirTemp(wd, "spectre-init-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(base) })
+	rel, err := filepath.Rel(wd, base)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var out, errBuf bytes.Buffer
 
 	if code := Init([]string{"--root", base}, &out, &errBuf); code != OK {
@@ -24,6 +43,16 @@ func TestInitCreatesTree(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(root, want)); err != nil {
 			t.Errorf("%s: %v", want, err)
 		}
+	}
+
+	wantOut := strings.Join([]string{
+		"created " + filepath.Join(rel, "spectre", "specs"),
+		"created " + filepath.Join(rel, "spectre", "changes"),
+		"created " + filepath.Join(rel, "spectre", "config.md"),
+		"",
+	}, "\n")
+	if got := out.String(); got != wantOut {
+		t.Errorf("stdout = %q, want %q", got, wantOut)
 	}
 }
 

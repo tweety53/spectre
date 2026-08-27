@@ -242,7 +242,7 @@ func TestFencedTaskExampleDoesNotFoolListValidateOrArchive(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "proposal.md"), []byte(proposal), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	tasks := "# Tasks\n\n" +
+	tasks := "# c1\n\n" +
 		"- [x] 1. Real task one\n" +
 		"- [x] 2. Real task two\n" +
 		"```\n" +

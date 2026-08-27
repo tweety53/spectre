@@ -78,7 +78,7 @@ func TestTaskSequenceRuleOff(t *testing.T) {
 	cfg := config.Default().WithRule("task-sequence", false)
 	raw := []byte("# Tasks\n\n- [ ] 5. c\n")
 	ts := []model.Task{{Num: 5, Text: "c", Line: 3}}
-	if got := msgs(TaskFindings(cfg, "changes/x/tasks.md", raw, ts)); got != "" {
+	if got := msgs(TaskFindings(cfg, "Tasks", "changes/x/tasks.md", raw, ts)); got != "" {
 		t.Errorf("rule off should be silent, got:\n%s", got)
 	}
 }
