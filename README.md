@@ -9,7 +9,8 @@ spectre is meant to be driven by an AI coding agent, not typed at by hand: hand 
 below and it runs the `spectre` commands itself. This is the short path — the full walkthrough,
 with every prompt and every generated file body in full, is [docs/example.md](docs/example.md).
 Claude Code users can instead run `/spectre` and `/spectre-new`, shipped in this repository's
-[.claude/skills/](.claude/skills/).
+[.claude/skills/](.claude/skills/). Prefer typing the commands yourself? The same journey, as
+commands and their real output instead of prompts, is [docs/terminal.md](docs/terminal.md).
 
 Install first: `go install github.com/tweety53/spectre/cmd/spectre@latest`, or build locally with
 `go build -o bin/spectre ./cmd/spectre`.
