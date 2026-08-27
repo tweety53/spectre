@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/tweety53/spectre/internal/render"
 	"github.com/tweety53/spectre/internal/tree"
@@ -22,7 +23,16 @@ const _proposalTemplate = `# %s
 <!-- the observable difference once this lands -->
 `
 
-// New scaffolds changes/<id>/ with proposal and task templates.
+const _designTemplate = `## Context
+
+<!-- what constrains this change and why it is one change -->
+
+## Decisions
+
+<!-- what was chosen, what was considered, and why -->
+`
+
+// New scaffolds changes/<id>/ with proposal, tasks and design templates.
 func New(args []string, stdout, stderr io.Writer) int {
 	fs, root := flagSet("new", stderr)
 	if err := fs.Parse(args); err != nil {
@@ -67,7 +77,8 @@ func New(args []string, stdout, stderr io.Writer) int {
 
 	files := map[string][]byte{
 		tree.ProposalFile: []byte(fmt.Sprintf(_proposalTemplate, id)),
-		tree.TasksFile:    render.Tasks(nil),
+		tree.TasksFile:    render.Tasks(id, nil),
+		tree.DesignFile:   []byte(_designTemplate),
 	}
 	for name, body := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), body, 0o644); err != nil {
@@ -78,11 +89,21 @@ func New(args []string, stdout, stderr io.Writer) int {
 			return Usage
 		}
 	}
-	fmt.Fprintf(stdout, "created %s\n", dir)
+	fmt.Fprintf(stdout, "created %s\n", displayPath(dir))
 	return OK
 }
 
-// isValidID checks that id is a single flat directory name with no path traversal.
+// isValidID checks that id is a single flat directory name with no path
+// traversal and no control characters. The check rejects the whole
+// Unicode control category (unicode.IsControl), not just \n, \r and \t:
+// id becomes both a required heading (see ProposalFindings and
+// TaskFindings) and a directory name, and any control character can
+// break one of those two roles — a newline splits headingFindings'
+// line-by-line scan and validate's file:line: message output, a NUL
+// breaks the directory name outright, and stray control bytes in a
+// heading serve no purpose a caller could intend. Rejecting the whole
+// category is one rule instead of an allowlist of "the control
+// characters we happened to think of".
 func isValidID(id string) bool {
 	if id == "" || id == "." || id == ".." {
 		return false
@@ -95,6 +116,9 @@ func isValidID(id string) bool {
 		return false
 	}
 	if filepath.IsAbs(id) {
+		return false
+	}
+	if strings.ContainsFunc(id, unicode.IsControl) {
 		return false
 	}
 	return true

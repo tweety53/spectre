@@ -17,12 +17,14 @@ import (
 // ErrNoRoot reports that no spectre/ directory was found.
 var ErrNoRoot = errors.New("no spectre/ directory found")
 
-// ProposalFile and TasksFile are the fixed filenames every change carries,
-// the one source of truth every package that creates, reads, or validates
-// a change agrees on.
+// ProposalFile, TasksFile and DesignFile are the fixed filenames a change
+// uses when it carries them, the one source of truth every package that
+// creates, reads, or validates a change agrees on. ProposalFile and
+// TasksFile are required on every change; DesignFile is optional.
 const (
 	ProposalFile = "proposal.md"
 	TasksFile    = "tasks.md"
+	DesignFile   = "design.md"
 )
 
 // Tree is a resolved spectre tree, carrying its own configuration. The

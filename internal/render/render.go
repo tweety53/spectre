@@ -33,10 +33,11 @@ func collapseNewlines(s string) string {
 	return strings.ReplaceAll(s, "\n", " ")
 }
 
-// Tasks renders a change's tasks.md, renumbering from 1 in slice order.
-func Tasks(ts []model.Task) []byte {
+// Tasks renders a change's tasks.md, titled "# <id>" and renumbering
+// ts from 1 in slice order.
+func Tasks(id string, ts []model.Task) []byte {
 	var b bytes.Buffer
-	b.WriteString("# Tasks\n\n")
+	fmt.Fprintf(&b, "# %s\n\n", id)
 	for i, t := range ts {
 		box := " "
 		if t.Done {

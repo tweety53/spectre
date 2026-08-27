@@ -6,6 +6,7 @@ import (
 	"flag"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/tweety53/spectre/internal/model"
 	"github.com/tweety53/spectre/internal/tree"
@@ -38,6 +39,26 @@ func resolve(root string) (*tree.Tree, error) {
 		return nil, err
 	}
 	return tree.Find(wd)
+}
+
+// displayPath renders p for a human to read: relative to the working
+// directory when that reads better, the absolute path p otherwise. This is
+// a display concern only — os.Getwd or filepath.Rel failing, or p sitting
+// outside the working directory, all fall back to p unchanged. It never
+// returns an error and never touches what p names on disk.
+func displayPath(p string) string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return p
+	}
+	rel, err := filepath.Rel(wd, p)
+	if err != nil {
+		return p
+	}
+	if !filepath.IsLocal(rel) {
+		return p
+	}
+	return rel
 }
 
 // hasChange reports whether id names one of changes.

@@ -23,7 +23,7 @@ func seedTree(t *testing.T) string {
 	}
 	write("specs/auth.md", "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a.\n- R2: The system SHALL b.\n")
 	write("changes/kan-1-first/proposal.md", "# kan-1-first\n\n## Why\nBecause.\n\n## What changes\n- a thing\n")
-	write("changes/kan-1-first/tasks.md", "# Tasks\n\n- [x] 1. One\n- [ ] 2. Two\n- [ ] 3. Three\n")
+	write("changes/kan-1-first/tasks.md", "# kan-1-first\n\n- [x] 1. One\n- [ ] 2. Two\n- [ ] 3. Three\n")
 	return base
 }
 
