@@ -14,8 +14,11 @@ Rendered from the store. Do not edit: the findings are rows, and the next render
 | F8 | Principles | Minor | .claude/skills/spectre-new/SKILL.md:4 | allowed-tools grants Write alongside Read and Edit, but spectre new pre-creates proposal.md, tasks.md and design.md, so the skill only ever edits existing content. Write additionally permits creating arbitrary new files, which the documented workflow never does. Narrow to Bash(spectre:*), Bash(git:*), Read, Edit. |
 | F9 | Primary | Minor | .claude/skills/spectre/SKILL.md:4 | Both skills grant Bash(git:*) in allowed-tools, but neither workflow runs any git command. Both guardrails explicitly forbid staging, committing or git mv on the user behalf, so the grant permits precisely what the skills promise not to do. Raised as an observation by the task-17 reviewer rather than as a finding; recorded as one here because it is the same least-privilege class as F8 and should be settled with it. |
 | F10 | Principles | Minor | .claude/skills/spectre-new/SKILL.md:4 | allowed-tools grants Bash(spectre:*) though the documented workflow only ever runs spectre new. Narrowing to Bash(spectre new:*) would cover every documented invocation including --root. Least privilege. Flagged by the reviewer as pre-existing rather than introduced by the permission fix, and non-blocking. |
+| F11 | Primary | Minor | spectre/changes/kan-351-quick-start-guide/design.md:1 | Raised as Major "paperwork does not record the terminal guide". Downgraded to Minor after checking: the paperwork DOES record it — section 10, the terminal-guide-alongside decision and task 18 are all present in the worktree. They are uncommitted because git boundaries forbid change artifacts in a task commit; they are committed only at integrate. The reviewer read a clone, which carries the artifacts as of the previous integrate commit 2630125, before task 18 existed. The real condition it identifies is that PR 3 as currently pushed carries stale artifacts, which this fix run resolves when it commits and pushes to the PR branch under the prUrl exception. |
+| F12 | Principles | Major | spectre/changes/kan-351-quick-start-guide/design.md:244 | The docs-are-prompt-first decision states there is no terminal walk in either document and rejects an agent-less fallback; docs/terminal.md is a terminal walk. The new terminal-guide-alongside decision claimed it does not supersede that one, which was too glib. Corrected: the earlier clause is now marked narrowed where it is written, and the new decision confronts the rejection directly — both objections were to a fallback INSIDE the README, and a separate document does not carry the cost either objection named. |
+| F13 | Principles | Minor | docs/terminal.md:15 | The --root-before-positional rule is duplicated between README and docs/terminal.md, and the archive prerequisites across all three documents, with nothing binding them. Kept deliberately, on the same reasoning already taken for the agent prompts: a rule needed at the moment of typing is worse behind a link. The cost is now stated in design.md section 10 rather than left implicit — three manual edits to stay honest, and no guard will catch a missed one. A prose-diffing guard was considered and rejected as brittle. |
 
-findings-total: 10
+findings-total: 13
 finding-status: F1 fixed
 finding-status: F2 fixed
 finding-status: F3 fixed
@@ -26,8 +29,11 @@ finding-status: F7 fixed
 finding-status: F8 fixed
 finding-status: F9 fixed
 finding-status: F10 fixed
+finding-status: F11 open
+finding-status: F12 fixed
+finding-status: F13 fixed
 
-reproducers-total: 10
+reproducers-total: 13
 finding-reproducer: F1 none — demonstrated by mutation rather than a single command: edit the placeholder text inside _designTemplate, then run gofmt -l . and go vet ./... and go test ./... — all stay green while docs example.md still shows the old body
 finding-reproducer: F2 none — a prose corruption in a change artifact, confirmed by reading the raw file: a stray heading line reading "## Testing`, or" and an open-question entry sitting inside section 5
 finding-reproducer: F3 none — a prose corruption in an untracked change artifact; confirmed by grep -n on the file heading order showing sections out of sequence and a malformed heading
@@ -38,3 +44,6 @@ finding-reproducer: F7 grep -rn gymie .claude/ — two hits, in files this chang
 finding-reproducer: F8 none — a static tool-permission scope, verified by reading .claude/skills/spectre-new/SKILL.md steps 2 to 4 against internal/cmd/new.go lines 76 to 88, where spectre new already writes all three files before the skill acts
 finding-reproducer: F9 grep -n "git" .claude/skills/spectre/SKILL.md .claude/skills/spectre-new/SKILL.md — every mention is a guardrail forbidding git actions or prose naming git add as a next step, never a workflow step that runs one
 finding-reproducer: F10 grep -n "spectre " .claude/skills/spectre-new/SKILL.md — only spectre new appears as an invoked command, yet the grant covers every subcommand
+finding-reproducer: F11 git show 51b6441:spectre/changes/kan-351-quick-start-guide/design.md | grep -c terminal-guide-alongside — returns 0, while the same grep against the worktree file returns 1
+finding-reproducer: F12 sed -n "/### The docs are prompt-first/,/^### /p" design.md — the Chosen line reads "No terminal walk for the human, in either document", and the Considered line rejects keeping a terminal walk as an agent-less fallback
+finding-reproducer: F13 grep -n "stops parsing" README.md docs/terminal.md; grep -n "git mv|already tracked|git add spectre" README.md docs/example.md docs/terminal.md — the flag rule stated twice, the archive prerequisites three times, none bound by a test

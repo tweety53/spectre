@@ -649,3 +649,67 @@ Rendered from the store. Do not edit: every dispatch is a row, and the next rend
 - Started: 2026-08-27T21:26:47Z
 - Tokens: not measured
 
+## Dispatch 63 — implementer
+
+- Task: 18
+- Role: implementer
+- Model: sonnet
+- Commit: 51b6441
+- Outcome: completed
+- Started: 2026-08-27T21:57:18Z
+- Tokens: cost unattributed — session never bound
+
+## Dispatch 64 — reviewer
+
+- Task: 18
+- Role: reviewer
+- Model: sonnet
+- Commit: no commit
+- Outcome: completed
+- Started: 2026-08-27T22:01:36Z
+- Tokens: cost unattributed — session never bound
+
+## Dispatch 65 — reviewer
+
+- Task: no task
+- Role: reviewer
+- Slot: Primary
+- Model: sonnet
+- Commit: no commit
+- Outcome: completed
+- Started: 2026-08-27T22:01:36Z
+- Tokens: cost unattributed — session never bound
+
+## Dispatch 66 — reviewer
+
+- Task: no task
+- Role: reviewer
+- Slot: Principles
+- Model: sonnet
+- Commit: no commit
+- Outcome: completed
+- Started: 2026-08-27T22:01:36Z
+- Tokens: cost unattributed — session never bound
+
+## Dispatch 67 — reviewer
+
+- Task: no task
+- Role: reviewer
+- Slot: Code review (low)
+- Model: sonnet
+- Commit: no commit
+- Outcome: completed
+- Started: 2026-08-27T22:01:36Z
+- Tokens: cost unattributed — session never bound
+
+## Dispatch 68 — reviewer
+
+- Task: no task
+- Role: reviewer
+- Slot: Principles
+- Model: sonnet
+- Commit: no commit
+- Outcome: completed
+- Started: 2026-08-27T22:12:03Z
+- Tokens: not measured
+

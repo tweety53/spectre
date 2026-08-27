@@ -911,3 +911,49 @@ not in `.gitignore` — checked, not assumed — so these commit normally.
     no Go is touched, so any movement means something unintended happened. Both guards still pass.
     Confirm `git status` shows `.claude/` as a normal untracked addition, not ignored.
 
+---
+
+- [x] 18. Add a terminal guide beside the prompt-first one
+
+**Build:** green
+**Files:** `docs/terminal.md`, `README.md`
+**Tests:** none added — documentation only. Correctness is shown by running every command the guide
+shows and pasting the real output, in step 5.
+**Regression:** reverting this commit removes the only route for a reader who does not drive spectre
+through an agent — the position the docs were in before this task, and the reason it exists.
+**Baseline:** before=144 after=144
+**Commit:** `docs(terminal): add a command-driven guide beside the prompt-first one`
+
+Per `terminal-guide-alongside` in `design.md`. It does **not** supersede `docs-are-prompt-first`:
+the README still leads with the prompt-first path, and `docs/example.md` is unchanged.
+
+  - [x] **Step 1: Mirror the walkthrough's nine steps, in the same order**, with the same subject —
+    the notifications change, change id `multi-channel-notifications`. A reader moving between the
+    two documents should recognise the same journey.
+
+  - [x] **Step 2: Commands and their real output, in place of prompts.** Every command shown must be
+    one you ran, with the output you actually saw. This is the document the prompt-first rewrite
+    removed; it is being restored deliberately, so it has to be accurate.
+
+  - [x] **Step 3: Do NOT repeat the generated file bodies.** They live in `docs/example.md` and are
+    pinned to `cmd.New`'s real output by `TestExampleDocMatchesScaffold`. A second copy would sit
+    **outside** that guard and drift silently — the exact defect the panel raised twice in this
+    change. Name what each step produces and link to the walkthrough for the contents.
+
+  - [x] **Step 4: Carry the facts a terminal reader needs and an agent reader did not.** The
+    `--root`-before-positional rule; that `archive` needs the tree in a git repository with the
+    change's files tracked; that a freshly scaffolded change reports `no tasks` until the plan
+    exists; and the implement/build-and-test/tick/commit loop between `new` and `archive`.
+
+  - [x] **Step 5: Run every command the guide shows**, in a scratch git repository, against a binary
+    built from this worktree, and paste the transcript. Include the two refusals — `archive` with
+    unchecked tasks, and `archive` before `git add` — since a terminal reader will hit both.
+
+  - [x] **Step 6: Point the README at both guides**, in one or two lines. It still leads with the
+    prompt-first path; the terminal guide is the alternative, not the default. The quick start is 35
+    lines and must not grow materially.
+
+  - [x] **Step 7: Verify.** `gofmt -l .`, `go vet ./...`, `go test ./...` clean; count 144; both
+    guards still pass. Confirm `docs/example.md` is untouched, and that no file body appears in both
+    guides.
+
