@@ -194,6 +194,40 @@ is scaffold-then-fill.
 subcommand added to spectre later needs no new skill. `new` earns a dedicated command because it is
 the only one with real work around it.
 
+## 10. A second guide, for the terminal
+
+`docs/terminal.md` covers the same ground as `docs/example.md` for a reader who would rather type
+commands than hand prompts to an agent. Same subject, same nine steps, same order — commands and
+their real output in place of prompts.
+
+**It does not repeat the generated file bodies.** They are shown in full in `docs/example.md` and
+pinned to `cmd.New`'s real output by `TestExampleDocMatchesScaffold`; a second copy would be a third
+statement of the same content, outside that guard, and free to drift. The terminal guide names what
+each step produces and links to the walkthrough for the contents. **A reader following it therefore
+follows one link for file content** — accepted deliberately, because the alternative is a copy no
+test protects.
+
+**This reverses part of the prompt-first decision, and does not supersede it.** `docs-are-prompt-first`
+stands: the README's quick start and `docs/example.md` remain prompt-first, and that is the path the
+README leads with. What changed is that a terminal reader is no longer left without a route —
+previously the terminal steps were deleted outright rather than relocated.
+
+**Some prose is deliberately duplicated between the guides, and this is the reasoning.** The
+`--root`-before-positional rule appears in both the README and `docs/terminal.md`, and the `archive`
+prerequisites appear in the README, the walkthrough and the terminal guide — three independent
+statements of one behaviour, bound by no test. This is the same trade already taken for the agent
+prompts: a rule a reader needs *at the moment they are typing* is worse behind a link than
+duplicated. **The cost is stated rather than hidden: a change to either rule requires three manual
+edits to stay honest, and nothing will catch a missed one.** A prose-diffing guard was considered
+and rejected as brittle — it would fail on every legitimate reword, which is how guards get deleted.
+The file bodies, which are bulk content rather than a rule needed mid-keystroke, are **not**
+duplicated and remain guarded.
+
+**Two guides is the cost.** They cover the same nine steps and can drift apart in structure even
+though the file bodies cannot. That is the accepted price of serving both audiences; the mitigation
+is that neither restates the other's substance — prompts live in one, command output in the other,
+file bodies in one place only.
+
 ## Testing
 
 - `internal/check`: ordering violations per file (present but out of order); `design.md` absent →
@@ -247,6 +281,11 @@ absolute path. Writing a walkthrough whose every output is real is what surfaced
 **Status:** active
 **Chosen:** the reader hands prompts to an agent, which runs the `spectre` commands. No terminal
 walk for the human, in either document; a command reference table stays in the README.
+**Narrowed by `terminal-guide-alongside`:** the "no terminal walk in either document" clause held
+for the two documents that existed when it was written — the README and `docs/example.md` — and
+still does. A third document, `docs/terminal.md`, now carries one. The alternative rejected below
+was a fallback *inside the README*; a separate document is a different shape and does not carry the
+cost that rejection named.
 **Considered:** dropping command documentation entirely — rejected because the commands are the
 tool's real surface and an agent needs to know they exist; keeping the terminal walk lower down as a
 fallback for agent-less use — rejected because it leaves the README long (213 lines) and hedges on
@@ -381,6 +420,35 @@ command against an already-global binary.
 **`/spectre-new` is the deliberate exception**, and the reason is stated rather than assumed: `new`
 alone leaves three stubs and a change that reports `no tasks` until a plan exists, so scaffolding
 without filling is not a useful unit of work.
+
+### A terminal guide is added beside the prompt-first one, not instead of it
+
+**ID:** terminal-guide-alongside
+**Status:** active
+**Chosen:** a second document, `docs/terminal.md`, mirroring the walkthrough with commands and real
+output; the README points at both and still leads with the prompt-first path.
+**Considered:** a terminal appendix inside `docs/example.md` — rejected because that page is already
+308 lines and an appendix would push it past 400, burying the prompt-first reading the operator
+asked for; a dual-column format showing prompt and command per step — rejected because it undoes
+prompt-first for every reader in order to serve some of them.
+
+**The file bodies are not repeated**, by decision: they are guarded in `docs/example.md` by
+`TestExampleDocMatchesScaffold`, and a second copy would sit outside that guard. The terminal guide
+links for content. This costs its reader one link and buys the guarantee that the bodies cannot
+drift.
+
+**This narrows `docs-are-prompt-first` rather than merely coexisting with it**, and saying "it does
+not supersede it" would have been too glib. That decision states "No terminal walk for the human, in
+either document", and rejects "keeping the terminal walk lower down as a fallback for agent-less
+use" on the grounds that it leaves the README long and hedges about which path is real. Both
+objections were about a fallback **inside the README**. A separate document costs the README two
+lines, and the README still leads unambiguously with the prompt-first path — so the reasons for the
+rejection do not reach this shape. What is now false in the earlier decision is its blanket "either
+document" clause, and that clause has been marked narrowed where it is written rather than left to
+be discovered.
+
+**What is unchanged:** the README's quick start and `docs/example.md` remain prompt-first, and the
+README leads with that path.
 
 ## Open questions
 

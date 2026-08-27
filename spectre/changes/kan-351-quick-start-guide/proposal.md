@@ -43,4 +43,8 @@ Jira: KAN-351 — "Quick start guide at the top of the README".
   files in. Requested by the operator during implementation, and explicitly part of spectre rather
   than of the flow tooling.
 
+- `docs/terminal.md` is a second guide for readers who prefer to drive spectre from a terminal
+  rather than through an agent. It mirrors the walkthrough step for step with commands and their
+  real output, and links to the walkthrough for the file bodies rather than repeating them.
+
 How each of these works, and what was rejected, is in `design.md`.
