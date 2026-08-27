@@ -10,13 +10,13 @@ import (
 	"github.com/tweety53/spectre/internal/tree"
 )
 
-// twoTrees builds app/ and gymie/ side by side, with app declaring gymie
+// twoTrees builds app/ and web/ side by side, with app declaring web
 // as a peer, and returns the app tree.
-func twoTrees(t *testing.T, appSpecs, gymieSpecs map[string]string, peers string) *tree.Tree {
+func twoTrees(t *testing.T, appSpecs, webSpecs map[string]string, peers string) *tree.Tree {
 	t.Helper()
 	parent := t.TempDir()
 	app := testtree.Build(t, parent, "app", appSpecs, peers)
-	testtree.Build(t, parent, "gymie", gymieSpecs, "")
+	testtree.Build(t, parent, "web", webSpecs, "")
 	tr, err := tree.Find(app)
 	if err != nil {
 		t.Fatal(err)
@@ -52,11 +52,11 @@ func resolvePeers(t *testing.T, tr *tree.Tree) map[string]tree.ResolvedPeer {
 func TestRefFindingsResolves(t *testing.T) {
 	tr := twoTrees(t,
 		map[string]string{
-			"auth":  "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@plans#R1).\n- R2: The system SHALL b (@gymie:billing#R1).\n",
+			"auth":  "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@plans#R1).\n- R2: The system SHALL b (@web:billing#R1).\n",
 			"plans": "# plans\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL c (@R1).\n",
 		},
 		map[string]string{"billing": "# billing\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL d.\n"},
-		"gymie ../gymie\n")
+		"web ../web\n")
 	if got := findingsFor(t, tr); got != "" {
 		t.Errorf("want clean, got:\n%s", got)
 	}
@@ -64,10 +64,10 @@ func TestRefFindingsResolves(t *testing.T) {
 
 func TestRefFindingsUndeclaredPeer(t *testing.T) {
 	tr := twoTrees(t,
-		map[string]string{"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@gymie:billing#R1).\n"},
+		map[string]string{"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@web:billing#R1).\n"},
 		map[string]string{"billing": "# billing\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL d.\n"},
 		"")
-	if got := findingsFor(t, tr); !strings.Contains(got, "peer \"gymie\" is not declared in peers") {
+	if got := findingsFor(t, tr); !strings.Contains(got, "peer \"web\" is not declared in peers") {
 		t.Errorf("got:\n%s", got)
 	}
 }
@@ -84,13 +84,13 @@ func TestRefFindingsMissingPeerPath(t *testing.T) {
 
 func TestRefFindingsUnknownCapabilityAndID(t *testing.T) {
 	tr := twoTrees(t,
-		map[string]string{"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@gymie:nope#R1) (@gymie:billing#R9) (@R7).\n"},
+		map[string]string{"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@web:nope#R1) (@web:billing#R9) (@R7).\n"},
 		map[string]string{"billing": "# billing\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL d.\n"},
-		"gymie ../gymie\n")
+		"web ../web\n")
 	got := findingsFor(t, tr)
 	for _, want := range []string{
-		"no capability \"nope\" in peer \"gymie\"",
-		"no requirement R9 in gymie:billing",
+		"no capability \"nope\" in peer \"web\"",
+		"no requirement R9 in web:billing",
 		"no requirement R7 in auth",
 	} {
 		if !strings.Contains(got, want) {
@@ -113,19 +113,19 @@ func TestRefFindingsUnknownCapabilityInThisTree(t *testing.T) {
 
 func TestRefFindingsMalformedPeerReference(t *testing.T) {
 	tr := twoTrees(t,
-		map[string]string{"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@gymie:R4).\n"},
+		map[string]string{"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@web:R4).\n"},
 		map[string]string{"billing": "# billing\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL d.\n"},
-		"gymie ../gymie\n")
-	if got := findingsFor(t, tr); !strings.Contains(got, "@gymie:R4: malformed reference, want <peer>:<capability>#<id>") {
+		"web ../web\n")
+	if got := findingsFor(t, tr); !strings.Contains(got, "@web:R4: malformed reference, want <peer>:<capability>#<id>") {
 		t.Errorf("got:\n%s", got)
 	}
 }
 
 // TestRefFindingsCrossTreeDifferentIDPrefix pins the case the config
 // design calls out explicitly: app (default "R" prefix) cites a
-// requirement in its peer gymie, which is configured with a different
+// requirement in its peer web, which is configured with a different
 // id prefix ("REQ-"). Each tree parses its own files by its own
-// configuration, and the citation carries gymie's id exactly as
+// configuration, and the citation carries web's id exactly as
 // written, so the reference must still resolve.
 func TestRefFindingsCrossTreeDifferentIDPrefix(t *testing.T) {
 	parent := t.TempDir()
@@ -155,9 +155,9 @@ func TestRefFindingsCrossTreeDifferentIDPrefix(t *testing.T) {
 	}
 
 	app := writeTree("app", "", map[string]string{
-		"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@gymie:billing#REQ-1).\n",
-	}, "gymie ../gymie\n")
-	writeTree("gymie", "## Vocabulary\n- id-prefix: REQ-\n", map[string]string{
+		"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@web:billing#REQ-1).\n",
+	}, "web ../web\n")
+	writeTree("web", "## Vocabulary\n- id-prefix: REQ-\n", map[string]string{
 		"billing": "# billing\n\n## Purpose\nP.\n\n## Requirements\n- REQ-1: The system SHALL d.\n",
 	}, "")
 
@@ -177,8 +177,8 @@ func TestRefFindingsCrossTreeDifferentIDPrefix(t *testing.T) {
 	if len(specs) != 1 || len(specs[0].Reqs) != 1 || len(specs[0].Reqs[0].Refs) != 1 {
 		t.Fatalf("want one extracted reference, got specs = %+v", specs)
 	}
-	if ref := specs[0].Reqs[0].Refs[0]; ref.Peer != "gymie" || ref.Capability != "billing" || ref.ID != "REQ-1" {
-		t.Errorf("extracted ref = %+v, want peer gymie, capability billing, id REQ-1", ref)
+	if ref := specs[0].Reqs[0].Refs[0]; ref.Peer != "web" || ref.Capability != "billing" || ref.ID != "REQ-1" {
+		t.Errorf("extracted ref = %+v, want peer web, capability billing, id REQ-1", ref)
 	}
 
 	if got := findingsFor(t, tr); got != "" {
@@ -191,16 +191,16 @@ func TestRefFindingsPeerUnreadable(t *testing.T) {
 		t.Skip("running as root: file modes are not enforced")
 	}
 	tr := twoTrees(t,
-		map[string]string{"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@gymie:billing#R1).\n"},
+		map[string]string{"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@web:billing#R1).\n"},
 		map[string]string{"billing": "# billing\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL d.\n"},
-		"gymie ../gymie\n")
-	specPath := filepath.Join(filepath.Dir(tr.Root), "..", "gymie", "spectre", "specs", "billing.md")
+		"web ../web\n")
+	specPath := filepath.Join(filepath.Dir(tr.Root), "..", "web", "spectre", "specs", "billing.md")
 	if err := os.Chmod(specPath, 0o000); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(specPath, 0o644) })
 
-	if got := findingsFor(t, tr); !strings.Contains(got, "peer \"gymie\" could not be read at") {
+	if got := findingsFor(t, tr); !strings.Contains(got, "peer \"web\" could not be read at") {
 		t.Errorf("got:\n%s", got)
 	}
 }

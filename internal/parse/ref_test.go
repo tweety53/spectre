@@ -30,12 +30,12 @@ func TestRefsIgnoresPeerlessForeignPrefix(t *testing.T) {
 // peer's own prefix, different from this tree's own.
 func TestRefsPeerQualifiedForeignPrefixStillMatches(t *testing.T) {
 	parser := New(config.Default()) // id-prefix "R"
-	refs := parser.Refs("(@gymie:billing#REQ-1)", 1)
+	refs := parser.Refs("(@web:billing#REQ-1)", 1)
 	if len(refs) != 1 {
 		t.Fatalf("Refs = %+v, want one peer-qualified ref", refs)
 	}
-	if ref := refs[0]; ref.Peer != "gymie" || ref.Capability != "billing" || ref.ID != "REQ-1" {
-		t.Errorf("ref = %+v, want peer gymie, capability billing, id REQ-1", ref)
+	if ref := refs[0]; ref.Peer != "web" || ref.Capability != "billing" || ref.ID != "REQ-1" {
+		t.Errorf("ref = %+v, want peer web, capability billing, id REQ-1", ref)
 	}
 }
 

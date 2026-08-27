@@ -16,7 +16,7 @@ func TestSpec(t *testing.T) {
 		Purpose:    "Sessions and tokens.",
 		Reqs: []model.Requirement{
 			{ID: "R1", Num: 1, Text: "The system SHALL refresh the token.", Notes: []string{"On the request path."}},
-			{ID: "R2", Num: 2, Text: "The picker SHALL show enabled plans (@gymie:plans#R7)"},
+			{ID: "R2", Num: 2, Text: "The picker SHALL show enabled plans (@web:plans#R7)"},
 		},
 	}
 
@@ -28,7 +28,7 @@ Sessions and tokens.
 ## Requirements
 - R1: The system SHALL refresh the token.
   On the request path.
-- R2: The picker SHALL show enabled plans (@gymie:plans#R7)
+- R2: The picker SHALL show enabled plans (@web:plans#R7)
 `
 	if got := string(Spec(s)); got != want {
 		t.Errorf("Spec() =\n%q\nwant\n%q", got, want)
@@ -52,7 +52,7 @@ Sessions and tokens.
 ## Requirements
 - R1: The system SHALL refresh the token.
   On the request path.
-- R2: The picker SHALL show enabled plans (@gymie:plans#R7)
+- R2: The picker SHALL show enabled plans (@web:plans#R7)
 `
 	dir := t.TempDir()
 	p := filepath.Join(dir, "auth.md")

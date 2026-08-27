@@ -36,10 +36,9 @@ type Tree struct {
 }
 
 // At builds a Tree for root under cfg, without reading config.md itself
-// — for a caller that has already resolved cfg, such as cmd.Migrate,
-// which reads the target's own config.md before writing into it under
-// that same layout. Find and Open resolve cfg themselves via
-// config.Load and are the usual way to open an existing tree.
+// — for a caller that has already resolved cfg on its own. Find and
+// Open resolve cfg themselves via config.Load and are the usual way to
+// open an existing tree.
 func At(root string, cfg config.Config) *Tree {
 	return &Tree{Root: root, Cfg: cfg, p: parse.New(cfg)}
 }
@@ -57,25 +56,40 @@ func Find(start string) (*Tree, error) {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return nil, fmt.Errorf("%w (searched upwards from %s)", ErrNoRoot, start)
+			return nil, fmt.Errorf(
+				"%w (searched upwards from %s); run \"spectre init\" to create one",
+				ErrNoRoot, start,
+			)
 		}
 		dir = parent
 	}
 }
 
-// Open uses an explicit root, which may be the tree directory itself or
-// its parent.
-func Open(root string) (*Tree, error) {
+// RootPath resolves root to the path of a spectre tree directory: a
+// path whose basename is not literally "spectre" gains it. The
+// directory need not exist, which is what lets Init create one; Open
+// stats the result, Init creates it.
+func RootPath(root string) (string, error) {
 	abs, err := filepath.Abs(root)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if filepath.Base(abs) != "spectre" {
 		abs = filepath.Join(abs, "spectre")
 	}
+	return abs, nil
+}
+
+// Open uses an explicit root, which may be the tree directory itself or
+// its parent.
+func Open(root string) (*Tree, error) {
+	abs, err := RootPath(root)
+	if err != nil {
+		return nil, err
+	}
 	fi, err := os.Stat(abs)
 	if err != nil || !fi.IsDir() {
-		return nil, fmt.Errorf("%w at %s", ErrNoRoot, abs)
+		return nil, fmt.Errorf("%w at %s; run \"spectre init\" to create one", ErrNoRoot, abs)
 	}
 	return load(abs)
 }

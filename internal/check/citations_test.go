@@ -28,7 +28,7 @@ func TestCitationsPeer(t *testing.T) {
 	tr := twoTrees(t,
 		map[string]string{"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a.\n"},
 		map[string]string{"billing": "# billing\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL d (@app:auth#R1).\n"},
-		"gymie ../gymie\n")
+		"web ../web\n")
 	specs, err := tr.Specs()
 	if err != nil {
 		t.Fatal(err)
@@ -39,13 +39,13 @@ func TestCitationsPeer(t *testing.T) {
 		}, Path: "/peer/spectre/specs/billing.md"},
 	}
 	sources := []PeerCitationSource{{
-		Name:     "gymie",
+		Name:     "web",
 		Root:     "/peer/spectre",
 		Specs:    peerSpecs,
 		OurNames: map[string]bool{"app": true},
 	}}
 	got := Citations(tr.Root, "auth", "R1", specs, sources)
-	if len(got) != 1 || got[0].Peer != "gymie" || got[0].Path != "specs/billing.md" {
+	if len(got) != 1 || got[0].Peer != "web" || got[0].Path != "specs/billing.md" {
 		t.Errorf("got %+v", got)
 	}
 }
