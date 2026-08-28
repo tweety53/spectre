@@ -8,12 +8,36 @@ disk is the entire state.
 spectre is meant to be driven by an AI coding agent, not typed at by hand: hand it each prompt
 below and it runs the `spectre` commands itself. This is the short path — the full walkthrough,
 with every prompt and every generated file body in full, is [docs/example.md](docs/example.md).
-Claude Code users can instead run `/spectre` and `/spectre-new`, shipped in this repository's
-[.claude/skills/](.claude/skills/). Prefer typing the commands yourself? The same journey, as
-commands and their real output instead of prompts, is [docs/terminal.md](docs/terminal.md).
+Claude Code users can instead run the `spectre` skill — `/spectre` in a checkout or after a
+manual copy, `/spectre:spectre` after a plugin install — which installs separately, see below.
+Prefer typing the commands yourself? The same journey, as commands and their real output instead
+of prompts, is [docs/terminal.md](docs/terminal.md).
 
 Install first: `go install github.com/tweety53/spectre/cmd/spectre@latest`, or build locally with
 `go build -o bin/spectre ./cmd/spectre`.
+
+The `spectre` skill installs separately from the binary. In **Claude Code**, this repository is its
+own plugin marketplace:
+
+```
+/plugin marketplace add tweety53/spectre
+/plugin install spectre@spectre
+```
+
+A plugin install namespaces the skill by the plugin name, so the command becomes
+`/spectre:spectre <subcommand> [args]`. `/plugin marketplace update spectre` picks up later
+changes to it. **With any other agent**, copy the skill directory into whatever skills directory
+that agent reads — for Claude Code that directory is `~/.claude/skills/`, and others differ:
+
+```bash
+git clone https://github.com/tweety53/spectre /tmp/spectre
+mkdir -p ~/.claude/skills
+cp -r /tmp/spectre/.claude/skills/spectre ~/.claude/skills/
+```
+
+Either way the skill only dispatches to the binary, so `spectre` still has to be on `PATH`.
+Inside a checkout of this repository no install is needed — Claude Code reads
+[.claude/skills/](.claude/skills/) directly.
 
 Then, one prompt per step:
 

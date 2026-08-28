@@ -1,0 +1,14 @@
+{
+  "name": "spectre",
+  "owner": {
+    "name": "tweety53",
+    "url": "https://github.com/tweety53"
+  },
+  "plugins": [
+    {
+      "name": "spectre",
+      "source": "./",
+      "description": "The spectre skill for the spectre CLI: spec-driven change tracking in markdown."
+    }
+  ]
+}
