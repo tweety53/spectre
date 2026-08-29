@@ -330,3 +330,75 @@ func TestArchiveForceOverridesMissingTasksFile(t *testing.T) {
 		t.Fatalf("change not archived: %v", err)
 	}
 }
+
+// gitTreeSatellite seeds a git repo with a change folder holding only
+// link.md — a satellite per check.IsSatellite: a pointer tree with no
+// plan of its own, whose tasks live in the canonical repository.
+func gitTreeSatellite(t *testing.T) string {
+	t.Helper()
+	base := emptyTree(t)
+	dir := filepath.Join(base, "spectre", "changes", "kan-4-sat")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	link := "## Part of\n\n`can:x`\n\n## Branch\n\nb\n\n## Tasks here\n\n1\n"
+	if err := os.WriteFile(filepath.Join(dir, "link.md"), []byte(link), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"init", "-q"},
+		{"add", "-A"},
+	} {
+		c := exec.Command("git", args...)
+		c.Dir = base
+		if out, err := c.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+	}
+	return base
+}
+
+// TestArchiveSatellite pins design.md's satellite-skips-plan-refusals: a
+// link-only satellite has no tasks.md of its own — its tasks live in the
+// canonical repository — so archive must not refuse it as though it were
+// an incomplete canonical change, and must not need --force to do so.
+func TestArchiveSatellite(t *testing.T) {
+	base := gitTreeSatellite(t)
+	var out, errBuf bytes.Buffer
+	if code := Archive([]string{"--root", base, "kan-4-sat"}, &out, &errBuf); code != OK {
+		t.Fatalf("exit = %d, want %d, stderr = %s", code, OK, errBuf.String())
+	}
+	if _, err := os.Stat(filepath.Join(base, "spectre", "changes", "archive", "kan-4-sat", "link.md")); err != nil {
+		t.Fatalf("change not archived: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(base, "spectre", "changes", "kan-4-sat")); !os.IsNotExist(err) {
+		t.Error("original folder still present")
+	}
+}
+
+// TestArchiveSatelliteDestinationExists pins design.md's decision that the
+// destination-exists refusal is identical for a satellite: it protects
+// against overwriting an already-archived change, a hazard that has
+// nothing to do with whether the change carries a plan.
+func TestArchiveSatelliteDestinationExists(t *testing.T) {
+	base := gitTreeSatellite(t)
+	dst := filepath.Join(base, "spectre", "changes", "archive", "kan-4-sat")
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sentinel := filepath.Join(dst, "sentinel.txt")
+	if err := os.WriteFile(sentinel, []byte("already archived\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out, errBuf bytes.Buffer
+	if code := Archive([]string{"--root", base, "kan-4-sat"}, &out, &errBuf); code != Fail {
+		t.Fatalf("exit = %d, want %d, stderr = %s", code, Fail, errBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), dst) {
+		t.Errorf("stderr = %q, want it to name the destination %q", errBuf.String(), dst)
+	}
+	if _, err := os.Stat(filepath.Join(base, "spectre", "changes", "kan-4-sat")); err != nil {
+		t.Fatalf("source folder should not have moved: %v", err)
+	}
+}

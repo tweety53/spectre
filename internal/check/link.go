@@ -15,6 +15,20 @@ import (
 // tree.ProposalFile, tree.TasksFile and tree.DesignFile.
 const LinkFile = "link.md"
 
+// IsSatellite reports whether dir is a pointer tree: it holds link.md and
+// nothing else (design.md's pointer-tree-not-full-tree). "Nothing else"
+// means design.md too — a directory that also carries one keeps every
+// check a full scaffold gets, same as proposal.md and tasks.md. It is
+// exported so archive reads the same definition Structural does, rather
+// than a copy that would drift the way it already has once, when review
+// widened "and nothing else" to include design.md.
+func IsSatellite(dir string) bool {
+	return fileExists(filepath.Join(dir, LinkFile)) &&
+		!fileExists(filepath.Join(dir, tree.ProposalFile)) &&
+		!fileExists(filepath.Join(dir, tree.TasksFile)) &&
+		!fileExists(filepath.Join(dir, tree.DesignFile))
+}
+
 // LinkFindings checks change c's parsed link.md (link) against peers, per
 // design.md's pointer-tree-not-full-tree, independent-archive and
 // peer-absence-is-not-a-finding decisions:

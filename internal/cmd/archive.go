@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/tweety53/spectre/internal/check"
 	"github.com/tweety53/spectre/internal/tree"
 )
 
@@ -44,24 +45,32 @@ func Archive(args []string, stdout, stderr io.Writer) int {
 		if c.ID != id {
 			continue
 		}
-		tasksPath := filepath.Join(c.Dir, tree.TasksFile)
-		if _, err := os.Stat(tasksPath); errors.Is(err, os.ErrNotExist) && !*force {
-			fmt.Fprintf(stderr, "%s: no tasks.md (use --force to archive anyway)\n", id)
-			return Fail
-		}
-		// `new` always writes a tasks.md, just an empty one, so the
-		// missing-file check above never catches "spectre new X &&
-		// spectre archive X": zero tasks trivially reads as zero unchecked,
-		// which the guard below would let through. Guard on having no
-		// tasks at all, the same content refusal --force overrides.
-		if len(c.Tasks) == 0 && !*force {
-			fmt.Fprintf(stderr, "%s: tasks.md has no tasks (use --force to archive anyway)\n", id)
-			return Fail
-		}
-		if left := len(c.Tasks) - c.DoneCount(); left > 0 && !*force {
-			fmt.Fprintf(stderr, "%s: %d of %d tasks are unchecked (use --force to archive anyway)\n",
-				id, left, len(c.Tasks))
-			return Fail
+		// A satellite is a pointer tree with no plan of its own — its
+		// tasks live in the canonical repository — so it has none of
+		// the three plan refusals below to trip. The destination-exists
+		// refusal and the git-tracking requirement are unaffected: they
+		// guard hazards that have nothing to do with whether the change
+		// carries a plan.
+		if !check.IsSatellite(c.Dir) {
+			tasksPath := filepath.Join(c.Dir, tree.TasksFile)
+			if _, err := os.Stat(tasksPath); errors.Is(err, os.ErrNotExist) && !*force {
+				fmt.Fprintf(stderr, "%s: no tasks.md (use --force to archive anyway)\n", id)
+				return Fail
+			}
+			// `new` always writes a tasks.md, just an empty one, so the
+			// missing-file check above never catches "spectre new X &&
+			// spectre archive X": zero tasks trivially reads as zero unchecked,
+			// which the guard below would let through. Guard on having no
+			// tasks at all, the same content refusal --force overrides.
+			if len(c.Tasks) == 0 && !*force {
+				fmt.Fprintf(stderr, "%s: tasks.md has no tasks (use --force to archive anyway)\n", id)
+				return Fail
+			}
+			if left := len(c.Tasks) - c.DoneCount(); left > 0 && !*force {
+				fmt.Fprintf(stderr, "%s: %d of %d tasks are unchecked (use --force to archive anyway)\n",
+					id, left, len(c.Tasks))
+				return Fail
+			}
 		}
 		dst := filepath.Join(t.ArchiveDir(), id)
 		if _, err := os.Stat(dst); err == nil {

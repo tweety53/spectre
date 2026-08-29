@@ -291,14 +291,10 @@ func Structural(t *tree.Tree, changeID string, peers map[string]tree.ResolvedPee
 		hasLink := fileExists(linkPath)
 
 		// A change directory holding link.md and nothing else is a
-		// satellite (design.md's pointer-tree-not-full-tree): skip the
-		// proposal, task and design checks entirely rather than reporting
-		// the files a full scaffold would have as missing. "Nothing else"
-		// means design.md too — a satellite that also carries one keeps
-		// every existing check for it, same as proposal.md and tasks.md.
-		satellite := hasLink && !fileExists(filepath.Join(c.Dir, tree.ProposalFile)) &&
-			!fileExists(filepath.Join(c.Dir, tree.TasksFile)) &&
-			!fileExists(filepath.Join(c.Dir, tree.DesignFile))
+		// satellite: skip the proposal, task and design checks entirely
+		// rather than reporting the files a full scaffold would have as
+		// missing. See IsSatellite for what "nothing else" covers and why.
+		satellite := IsSatellite(c.Dir)
 
 		if !satellite {
 			proposal := filepath.Join(c.Dir, tree.ProposalFile)

@@ -366,6 +366,60 @@ func TestLinkFindingsStaleParticipantNameIsNotReciprocal(t *testing.T) {
 	}
 }
 
+// TestIsSatellite reproduces each case as real directories on disk rather
+// than asserting against a stubbed filesystem.
+func TestIsSatellite(t *testing.T) {
+	write := func(t *testing.T, names ...string) string {
+		t.Helper()
+		d := filepath.Join(t.TempDir(), "x")
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range names {
+			if err := os.WriteFile(filepath.Join(d, name), []byte("x"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return d
+	}
+
+	tests := []struct {
+		name string
+		dir  func(t *testing.T) string
+		want bool
+	}{
+		{"link.md alone", func(t *testing.T) string {
+			return write(t, "link.md")
+		}, true},
+		{"link.md plus proposal.md", func(t *testing.T) string {
+			return write(t, "link.md", "proposal.md")
+		}, false},
+		{"link.md plus tasks.md", func(t *testing.T) string {
+			return write(t, "link.md", "tasks.md")
+		}, false},
+		{"link.md plus design.md", func(t *testing.T) string {
+			return write(t, "link.md", "design.md")
+		}, false},
+		{"no link.md", func(t *testing.T) string {
+			return write(t, "proposal.md", "tasks.md")
+		}, false},
+		{"empty directory", func(t *testing.T) string {
+			return write(t)
+		}, false},
+		{"directory does not exist", func(t *testing.T) string {
+			return filepath.Join(t.TempDir(), "does-not-exist")
+		}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := tt.dir(t)
+			if got := IsSatellite(dir); got != tt.want {
+				t.Errorf("IsSatellite(%s) = %v, want %v", dir, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestStructuralSkipsHeadingsForSatellite(t *testing.T) {
 	sat, _ := linkedTrees(t,
 		map[string]string{"link.md": satLinkMD("b", "1")},
