@@ -75,6 +75,7 @@ spectre/
   changes/<id>/proposal.md    # why, and what changes
              /tasks.md        # "- [ ] 1. ..." — the only progress signal
              /design.md       # context and decisions; validated when present
+             /link.md         # a change spanning repositories; alone, marks a satellite
   changes/archive/<id>/
 ```
 
@@ -91,6 +92,7 @@ to carry extra headings beyond these.
 | `proposal.md` | `# <change-id>`, `## Why`, `## What changes` |
 | `tasks.md` | `# <change-id>` |
 | `design.md` | `## Context`, `## Decisions` — checked only when the file exists; it stays optional |
+| `link.md` | no fixed headings; `## Part of`/`## Parts`/`## Branch`/`## Merge order`/`## Tasks here` grammar — see [links across repositories](docs/links.md) |
 | `specs/<capability>.md` | `# <capability>`, `## Purpose`, `## Requirements` — see [spec format](docs/spec-format.md) |
 
 `tasks.md` is also checked for having at least one task: a freshly scaffolded change reports `no
@@ -106,6 +108,7 @@ tasks` under `task-sequence` until a task is added.
 | `spectre validate [change-id]` | `--root` | structural checks and reference resolution, whole tree or one change |
 | `spectre refs <capability>#<id>` | `--root` | every citation of a requirement, in this tree and each declared peer |
 | `spectre archive <change-id>` | `--root`, `--force` | `git mv`s a finished change into `changes/archive/` |
+| `spectre link <peer>:<canonical-id>` | `--root`, `--force` | links this tree to a canonical change in a peer tree |
 
 Exit codes are a contract every command holds to: `0` success, `1` findings or a content refusal,
 `2` a usage or IO error.
@@ -119,6 +122,12 @@ How a capability spec file is written and how requirement ids work — see
 
 The three citation forms — same file, same tree, peer tree — and how `validate` and `refs` use
 them — see [docs/references.md](docs/references.md).
+
+## Links across repositories
+
+A change that spans more than one repository's spectre tree, `spectre link`'s guarded two-sided
+write, and what `validate` checks and deliberately does not — see
+[docs/links.md](docs/links.md).
 
 ## Per-repository configuration
 

@@ -196,6 +196,7 @@ func TestNewRejectsInvalidID(t *testing.T) {
 		{"absolute path", "/absolute"},
 		{"backslash escape", "..\\escape"},
 		{"empty string", ""},
+		{"backtick", "weird`id"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

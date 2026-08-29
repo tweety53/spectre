@@ -121,5 +121,11 @@ func isValidID(id string) bool {
 	if strings.ContainsFunc(id, unicode.IsControl) {
 		return false
 	}
+	// A backtick would close the code span renderLink embeds a change id
+	// in (internal/cmd/link.go), corrupting the peer's link.md. Reject it
+	// here so no id ever reaches that renderer un-escaped.
+	if strings.Contains(id, "`") {
+		return false
+	}
 	return true
 }

@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/tweety53/spectre/internal/check"
-	"github.com/tweety53/spectre/internal/tree"
 )
 
 // Validate checks the whole tree, or one change when an id is given.
@@ -37,17 +36,19 @@ func Validate(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	// Ref checking only runs for a whole-tree validate (changeID == ""), so
-	// only resolve peers in that case.
-	var peers map[string]tree.ResolvedPeer
-	if changeID == "" {
-		declared, err := t.Peers()
-		if err != nil {
-			fmt.Fprintln(stderr, err)
-			return Usage
-		}
-		peers = resolvePeers(declared)
+	// Resolved unconditionally: ref checking only runs for a whole-tree
+	// validate (changeID == ""), but link checking (internal/check's
+	// LinkFindings) consults peers for a single change too, and
+	// "spectre validate <change-id>" — the exact form /flow's implement
+	// step 1 runs — must not run every link check against a nil peer map,
+	// which reads every peer as not declared and silently drops every
+	// finding.
+	declared, err := t.Peers()
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return Usage
 	}
+	peers := resolvePeers(declared)
 
 	findings, err := check.Structural(t, changeID, peers)
 	if err != nil {

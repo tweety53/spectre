@@ -29,3 +29,8 @@ web-frontend ../web-frontend
 
 One name per line, paths relative to the tree's parent directory. A name repeated in `peers` is an
 error naming both lines. Two different names resolving to the same path is legal — an alias.
+
+A path may name either the peer repository or its tree directly — `web ../web` and
+`web ../web/spectre` both resolve to `../web/spectre`. Which one it already is is decided by
+probing for `changes/` inside it, not by comparing the path's basename to `spectre`: a repository
+whose own directory happens to be named `spectre` is not mistaken for the tree it contains.
