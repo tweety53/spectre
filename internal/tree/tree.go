@@ -114,6 +114,21 @@ func (t *Tree) ChangesDir() string { return filepath.Join(t.Root, t.Cfg.ChangesD
 // ArchiveDir is the tree's archived-changes subdirectory.
 func (t *Tree) ArchiveDir() string { return filepath.Join(t.ChangesDir(), "archive") }
 
+// isTree reports whether p is already a spectre tree directory rather than
+// the repository that contains one, by probing for changes/ inside it. A
+// peers entry names the repository, so Peers appends the tree leaf only
+// when this is false — but a repository whose own directory happens to be
+// named "spectre" (as spectre's own is) makes a basename comparison see the
+// leaf name where there is none, and resolve one level short. changes/,
+// not the bare directory itself, is what spectre init actually creates and
+// what every caller goes on to read, so a hit here is evidence a caller can
+// use — the same convention <agents repo>/scripts/lib/spec-root.sh applies
+// to the same question.
+func isTree(p string) bool {
+	fi, err := os.Stat(filepath.Join(p, "changes"))
+	return err == nil && fi.IsDir()
+}
+
 // Peers reads the peers file: "<name> <relative-path>" lines, blank lines
 // and # comments ignored. An absent file is not an error.
 func (t *Tree) Peers() (map[string]string, error) {
@@ -151,7 +166,7 @@ func (t *Tree) Peers() (map[string]string, error) {
 		if !filepath.IsAbs(p) {
 			p = filepath.Join(filepath.Dir(t.Root), p)
 		}
-		if filepath.Base(p) != "spectre" {
+		if !isTree(p) {
 			p = filepath.Join(p, "spectre")
 		}
 		out[name] = filepath.Clean(p)

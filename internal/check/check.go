@@ -12,6 +12,7 @@ import (
 
 	"github.com/tweety53/spectre/internal/config"
 	"github.com/tweety53/spectre/internal/model"
+	"github.com/tweety53/spectre/internal/parse"
 	"github.com/tweety53/spectre/internal/tree"
 )
 
@@ -254,8 +255,12 @@ func TaskFindings(cfg config.Config, id, relPath string, raw []byte, ts []model.
 
 // Structural checks every spec and change in the tree, or one change when
 // changeID is non-empty. peers is this tree's declared peers, already
-// resolved (see tree.ResolvePeer); it is only consulted when changeID is
-// empty, and may be nil otherwise.
+// resolved (see tree.ResolvePeer). Ref checking (changeID == "" only)
+// consults it for every reference; link checking consults it too, for
+// every change that carries a link.md, regardless of changeID — so a
+// caller that narrows to one linked change must still resolve and pass
+// peers, or its link findings will read every peer as not declared. A nil
+// map is only correct when no change in scope carries a link.md.
 func Structural(t *tree.Tree, changeID string, peers map[string]tree.ResolvedPeer) ([]Finding, error) {
 	var out []Finding
 
@@ -281,40 +286,76 @@ func Structural(t *tree.Tree, changeID string, peers map[string]tree.ResolvedPee
 		if changeID != "" && c.ID != changeID {
 			continue
 		}
-		proposal := filepath.Join(c.Dir, tree.ProposalFile)
-		raw, err := os.ReadFile(proposal)
-		switch {
-		case errors.Is(err, os.ErrNotExist):
-			out = append(out, Finding{File: rel(t, proposal), Line: 1, Msg: "missing " + tree.ProposalFile})
-		case err != nil:
-			return nil, err
-		default:
-			out = append(out, ProposalFindings(t.Cfg, c.ID, rel(t, proposal), raw)...)
+
+		linkPath := filepath.Join(c.Dir, LinkFile)
+		hasLink := fileExists(linkPath)
+
+		// A change directory holding link.md and nothing else is a
+		// satellite (design.md's pointer-tree-not-full-tree): skip the
+		// proposal, task and design checks entirely rather than reporting
+		// the files a full scaffold would have as missing. "Nothing else"
+		// means design.md too — a satellite that also carries one keeps
+		// every existing check for it, same as proposal.md and tasks.md.
+		satellite := hasLink && !fileExists(filepath.Join(c.Dir, tree.ProposalFile)) &&
+			!fileExists(filepath.Join(c.Dir, tree.TasksFile)) &&
+			!fileExists(filepath.Join(c.Dir, tree.DesignFile))
+
+		if !satellite {
+			proposal := filepath.Join(c.Dir, tree.ProposalFile)
+			raw, err := os.ReadFile(proposal)
+			switch {
+			case errors.Is(err, os.ErrNotExist):
+				out = append(out, Finding{File: rel(t, proposal), Line: 1, Msg: "missing " + tree.ProposalFile})
+			case err != nil:
+				return nil, err
+			default:
+				out = append(out, ProposalFindings(t.Cfg, c.ID, rel(t, proposal), raw)...)
+			}
+			tasksPath := filepath.Join(c.Dir, tree.TasksFile)
+			tasksRaw, err := os.ReadFile(tasksPath)
+			switch {
+			case errors.Is(err, os.ErrNotExist):
+				out = append(out, Finding{File: rel(t, tasksPath), Line: 1, Msg: "missing " + tree.TasksFile})
+			case err != nil:
+				return nil, err
+			default:
+				out = append(out, TaskFindings(t.Cfg, c.ID, rel(t, tasksPath), tasksRaw, c.Tasks)...)
+			}
+			// design.md is optional: an absent file is not a finding, but
+			// any other read error propagates exactly as the two branches
+			// above do.
+			designPath := filepath.Join(c.Dir, tree.DesignFile)
+			designRaw, err := os.ReadFile(designPath)
+			switch {
+			case errors.Is(err, os.ErrNotExist):
+				// optional, nothing to report
+			case err != nil:
+				return nil, err
+			default:
+				out = append(out, DesignFindings(t.Cfg, rel(t, designPath), designRaw)...)
+			}
 		}
-		tasksPath := filepath.Join(c.Dir, tree.TasksFile)
-		tasksRaw, err := os.ReadFile(tasksPath)
-		switch {
-		case errors.Is(err, os.ErrNotExist):
-			out = append(out, Finding{File: rel(t, tasksPath), Line: 1, Msg: "missing " + tree.TasksFile})
-		case err != nil:
-			return nil, err
-		default:
-			out = append(out, TaskFindings(t.Cfg, c.ID, rel(t, tasksPath), tasksRaw, c.Tasks)...)
-		}
-		// design.md is optional: an absent file is not a finding, but any
-		// other read error propagates exactly as the two branches above do.
-		designPath := filepath.Join(c.Dir, tree.DesignFile)
-		designRaw, err := os.ReadFile(designPath)
-		switch {
-		case errors.Is(err, os.ErrNotExist):
-			// optional, nothing to report
-		case err != nil:
-			return nil, err
-		default:
-			out = append(out, DesignFindings(t.Cfg, rel(t, designPath), designRaw)...)
+
+		if hasLink {
+			p := parse.New(t.Cfg)
+			link, err := p.LinkFile(linkPath)
+			if err != nil {
+				out = append(out, Finding{File: rel(t, linkPath), Line: 1, Msg: err.Error()})
+			} else {
+				out = append(out, LinkFindings(t, c, link, rel(t, linkPath), peers)...)
+			}
 		}
 	}
 	return out, nil
+}
+
+// fileExists reports whether path names a regular, readable file. It
+// treats every stat failure (absent, permission denied, ...) as "does not
+// exist" — callers that need to distinguish those cases read the file
+// directly instead, the way the proposal/tasks/design branches above do.
+func fileExists(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && !fi.IsDir()
 }
 
 // rel returns path relative to t's root; see relTo.

@@ -46,6 +46,25 @@ type Task struct {
 	Line int
 }
 
+// LinkRef names a change in a peer tree, as written in a `<peer>:<change-id>`
+// code span in link.md.
+type LinkRef struct {
+	Peer     string
+	ChangeID string
+}
+
+// Link is a change's link.md: the record connecting one repository's
+// spectre tree to another's, for a change that spans both. PartOf is the
+// zero LinkRef when the change carries no "## Part of" section — the
+// canonical side of a link, which has Parts instead.
+type Link struct {
+	PartOf     LinkRef
+	Parts      []LinkRef
+	Branch     string
+	MergeOrder []string // "." names this tree
+	TasksHere  []int    // expanded from the written ranges
+}
+
 // DoneCount reports how many of the change's tasks are checked.
 func (c Change) DoneCount() int {
 	n := 0

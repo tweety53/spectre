@@ -104,3 +104,40 @@ func TestValidateSingleChange(t *testing.T) {
 		t.Errorf("stdout = %q", out.String())
 	}
 }
+
+// TestValidateSingleChangeResolvesPeers pins the task 3 fix: before it,
+// validate.go resolved peers only when changeID == "", so
+// "spectre validate <change-id>" — the exact form /flow's implement step 1
+// runs — checked every link.md against a nil peer map and silently
+// reported nothing. A single-change validate must report the same link
+// finding a whole-tree validate reports.
+func TestValidateSingleChangeResolvesPeers(t *testing.T) {
+	satBase, _ := linkFixture(t, "kan-9-cross", "feature-cross", nil)
+	// Write only the satellite side by hand: a one-sided link, since the
+	// canonical never links back.
+	dir := filepath.Join(satBase, "spectre", "changes", "kan-9-cross")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := "## Part of\n\n`can:kan-9-cross`\n\n## Branch\n\nfeature-cross\n"
+	if err := os.WriteFile(filepath.Join(dir, "link.md"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var wholeOut, wholeErr bytes.Buffer
+	if code := Validate([]string{"--root", satBase}, &wholeOut, &wholeErr); code != Fail {
+		t.Fatalf("whole-tree validate exit = %d, want %d (Fail); stderr=%s", code, Fail, wholeErr.String())
+	}
+	if !strings.Contains(wholeOut.String(), "one-sided link") {
+		t.Fatalf("whole-tree validate stdout = %q, want a one-sided link finding", wholeOut.String())
+	}
+
+	var singleOut, singleErr bytes.Buffer
+	if code := Validate([]string{"--root", satBase, "kan-9-cross"}, &singleOut, &singleErr); code != Fail {
+		t.Fatalf("single-change validate exit = %d, want %d (Fail); stderr=%s", code, Fail, singleErr.String())
+	}
+	if !strings.Contains(singleOut.String(), "one-sided link") {
+		t.Fatalf("single-change validate stdout = %q, want the same one-sided link finding "+
+			"a nil peer map would silently drop", singleOut.String())
+	}
+}
