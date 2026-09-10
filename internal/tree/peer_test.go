@@ -2,9 +2,38 @@ package tree
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
+
+// runGit runs a git command in dir, failing the test on a non-zero exit.
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v in %s: %v\n%s", args, dir, err, out)
+	}
+}
+
+// initRepo makes dir a git repository with one commit, so a worktree can be
+// added to it — Peers' worktree-resolution path (repoParent) has nothing to
+// resolve against otherwise.
+func initRepo(t *testing.T, dir string) {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, dir, "init", "-q", "-b", "main")
+	runGit(t, dir, "config", "user.email", "test@example.com")
+	runGit(t, dir, "config", "user.name", "test")
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, dir, "add", "README.md")
+	runGit(t, dir, "commit", "-q", "-m", "initial")
+}
 
 func TestResolvePeerNotDeclared(t *testing.T) {
 	rp := ResolvePeer(map[string]string{}, "web")
@@ -256,6 +285,70 @@ func TestPeersResolvesPathAlreadyATree(t *testing.T) {
 			t.Fatalf("Resolution = %v, want PeerNotPresent", rp.Resolution)
 		}
 	})
+}
+
+// TestPeersResolvesFromInsideAWorktree covers the defect this test guards
+// against: a relative peers entry resolved from inside a git worktree
+// checked out under `<repo>/.worktrees/<name>/` used to land one level
+// short — inside `.worktrees/` itself — because that directory sits two
+// levels deeper than the repository the entry was authored against
+// (`../peer`, written assuming siblings at the repository's own level).
+// `spectre link` run from such a worktree therefore always saw the peer as
+// PeerNotPresent, exactly the shape KAN-486 hit hand-writing link.md
+// instead of using the CLI. repoParent's git-common-dir resolution fixes
+// it: this test proves resolution from the worktree lands on the same real
+// peer tree that resolution from the main checkout does.
+func TestPeersResolvesFromInsideAWorktree(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+
+	parent := t.TempDir()
+	canonicalDir := filepath.Join(parent, "canonical")
+	peerDir := filepath.Join(parent, "peer")
+
+	initRepo(t, canonicalDir)
+
+	peerTreeDir := makeTree(t, peerDir)
+	initRepo(t, peerDir)
+	peerRoot := filepath.Join(peerTreeDir, "spectre")
+	markerChange(t, peerRoot, "marker-change")
+
+	// A worktree of canonicalDir, nested two levels under it — the same
+	// shape `git worktree add <repo>/.worktrees/<name>` produces. Its own
+	// spectre/ tree is written directly (never committed): Find/Peers read
+	// the filesystem, not git history, so nothing here needs to be tracked.
+	worktreeDir := filepath.Join(canonicalDir, ".worktrees", "kan-486")
+	runGit(t, canonicalDir, "worktree", "add", "--quiet", worktreeDir, "-b", "kan-486")
+	makeTree(t, worktreeDir)
+
+	body := "peer ../peer\n"
+	if err := os.WriteFile(filepath.Join(worktreeDir, "spectre", "peers"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	tr, err := Find(worktreeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	peers, err := tr.Peers()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want, _ := filepath.EvalSymlinks(peerRoot)
+	got, _ := filepath.EvalSymlinks(peers["peer"])
+	if got != want {
+		t.Fatalf("peers[peer] = %q, want %q (the real peer tree, not something under .worktrees/)", got, want)
+	}
+
+	rp := ResolvePeer(peers, "peer")
+	if rp.Resolution != PeerFound {
+		t.Fatalf("Resolution = %v, want PeerFound", rp.Resolution)
+	}
+	if _, err := os.Stat(filepath.Join(rp.Tree.ChangesDir(), "marker-change", "tasks.md")); err != nil {
+		t.Errorf("marker change not visible through resolved tree: %v", err)
+	}
 }
 
 func TestNamesFor(t *testing.T) {
