@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -129,6 +130,34 @@ func isTree(p string) bool {
 	return err == nil && fi.IsDir()
 }
 
+// repoParent is the directory a peers file's relative entries resolve
+// against: ordinarily the parent of treeRoot (the repository root, when
+// treeRoot is a tree directory directly under it), but when treeRoot sits
+// inside a git worktree, the MAIN checkout's own root instead — resolved
+// via `git rev-parse --git-common-dir`, whose parent is that root
+// regardless of how deeply the worktree itself is nested. A peers entry is
+// authored sibling-relative to the repository a project's worktrees all
+// share (`../gymie-frontend`, say), never to any one worktree's own
+// location; without this, resolving it from inside a worktree checked out
+// under `<repo>/.worktrees/<name>/` lands one level short, inside
+// `.worktrees/` itself, because that directory sits two levels deeper than
+// the repository the entry was written against. Falls back to treeRoot's
+// ordinary parent when treeRoot is not inside a git repository at all — a
+// plain filesystem tree, as this package's own tests use, and the shape a
+// missing or unusable `git` binary degrades to as well.
+func repoParent(treeRoot string) string {
+	checkoutRoot := filepath.Dir(treeRoot)
+	out, err := exec.Command("git", "-C", checkoutRoot, "rev-parse", "--git-common-dir").Output()
+	if err != nil {
+		return checkoutRoot
+	}
+	commonDir := strings.TrimSpace(string(out))
+	if !filepath.IsAbs(commonDir) {
+		commonDir = filepath.Join(checkoutRoot, commonDir)
+	}
+	return filepath.Dir(commonDir)
+}
+
 // Peers reads the peers file: "<name> <relative-path>" lines, blank lines
 // and # comments ignored. An absent file is not an error.
 func (t *Tree) Peers() (map[string]string, error) {
@@ -164,7 +193,7 @@ func (t *Tree) Peers() (map[string]string, error) {
 
 		p := fields[1]
 		if !filepath.IsAbs(p) {
-			p = filepath.Join(filepath.Dir(t.Root), p)
+			p = filepath.Join(repoParent(t.Root), p)
 		}
 		if !isTree(p) {
 			p = filepath.Join(p, "spectre")
