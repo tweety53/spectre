@@ -81,11 +81,20 @@ func ResolvePeer(peers map[string]string, name string) ResolvedPeer {
 
 // NamesFor returns the subset of declared (a peer's own declared-peers map)
 // whose path resolves to the same directory as root — i.e. the name(s) by
-// which that peer refers back to root.
+// which that peer refers back to root. declared's values are always
+// resolved against a repository's primary checkout (Peers' own
+// repoParent-based resolution), so when root is itself a worktree's tree
+// (checked out under <repo>/.worktrees/<name>/) a bare sameDir(path, root)
+// never matches even for the peer that does name root's own repository —
+// repoParent(root) is root's own primary-checkout equivalent in both cases
+// (unchanged when root already is the primary tree), so comparing against
+// that canonical form too is what lets a worktree tree recognize its own
+// declared name.
 func NamesFor(declared map[string]string, root string) map[string]bool {
 	out := map[string]bool{}
+	canonicalRoot := filepath.Join(repoParent(root), "spectre")
 	for name, path := range declared {
-		if sameDir(path, root) {
+		if sameDir(path, root) || sameDir(path, canonicalRoot) {
 			out[name] = true
 		}
 	}

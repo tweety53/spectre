@@ -351,6 +351,50 @@ func TestPeersResolvesFromInsideAWorktree(t *testing.T) {
 	}
 }
 
+// TestNamesForFromInsideAWorktree covers NamesFor's own half of the same
+// defect TestPeersResolvesFromInsideAWorktree fixes for Peers: a peer's
+// declared path always resolves against ITS repository's primary
+// checkout (Peers' repoParent-based resolution), so when root is itself a
+// worktree tree, a bare directory comparison against root never matches
+// even the entry that genuinely names root's own repository — link.go's
+// namesBack calls NamesFor(declared, t.Root) with exactly this shape, and
+// without the fix a change confined to worktrees on both sides of a
+// cross-repo link always reads as one-sided, on both sides, regardless of
+// resolveCounterpart's own worktree fallback.
+func TestNamesForFromInsideAWorktree(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+
+	parent := t.TempDir()
+	meDir := filepath.Join(parent, "me")
+	initRepo(t, meDir)
+	makeTree(t, meDir)
+
+	otherDir := filepath.Join(parent, "other")
+	initRepo(t, otherDir)
+
+	worktreeDir := filepath.Join(meDir, ".worktrees", "kan-486")
+	runGit(t, meDir, "worktree", "add", "--quiet", worktreeDir, "-b", "kan-486")
+	makeTree(t, worktreeDir)
+
+	worktreeRoot := filepath.Join(worktreeDir, "spectre")
+	declared := map[string]string{"me": filepath.Join(meDir, "spectre")}
+
+	if got := NamesFor(declared, worktreeRoot); !got["me"] {
+		t.Errorf("NamesFor(declared, worktree root) = %v, want {\"me\": true} — "+
+			"declared[\"me\"] names the same repository worktreeRoot belongs to", got)
+	}
+
+	// The ordinary, non-worktree case stays unchanged: declared["other"]
+	// genuinely is a different repository, so it must still not match.
+	declared["other"] = otherDir
+	if got := NamesFor(declared, worktreeRoot); got["other"] {
+		t.Errorf("NamesFor(declared, worktree root) = %v, want \"other\" absent — "+
+			"it names an unrelated repository", got)
+	}
+}
+
 func TestNamesFor(t *testing.T) {
 	parent := t.TempDir()
 	me := makeTree(t, filepath.Join(parent, "app"))

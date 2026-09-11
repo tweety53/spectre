@@ -255,6 +255,36 @@ func TestLinkFindingsQuiet(t *testing.T) {
 	})
 }
 
+// TestLinkFindingsCounterpartOnlyInPeerWorktree pins resolveCounterpart's
+// worktree fallback: before either side of a cross-repo link has landed on
+// its own primary checkout, the counterpart change exists only under
+// <repo>/.worktrees/<id>/spectre — never at the primary checkout's own
+// changes/x — because Peers() always resolves the peer name to the
+// repository's primary checkout regardless of which worktree issued the
+// lookup (repoParent, tree.go). Without the fallback this reads as
+// one-sided on both sides for as long as the change lives only in
+// worktrees, exactly the shape KAN-486 hit hand-writing link.md instead of
+// using the CLI.
+func TestLinkFindingsCounterpartOnlyInPeerWorktree(t *testing.T) {
+	parent := t.TempDir()
+	satBase := testtree.Build(t, parent, "sat", nil, "can ../can\n")
+	canBase := testtree.Build(t, parent, "can", nil, "sat ../sat\n") // can's own changes/ stays empty
+	testtree.Change(t, satBase, "x", false, map[string]string{"link.md": satLinkMD("b", "1")})
+	testtree.Change(t, filepath.Join(canBase, ".worktrees", "x"), "x", false, map[string]string{
+		"link.md":     canLinkMD("b", goodMergeOrder),
+		"proposal.md": goodProposal,
+		"tasks.md":    oneTaskTasksFile,
+	})
+
+	sat, err := tree.Open(satBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := findings(t, sat); len(got) != 0 {
+		t.Errorf("want a clean round trip against a peer worktree, got:\n%s", findingMsgs(got))
+	}
+}
+
 // TestStructuralLinkPlusDesignKeepsDesignChecks pins that "nothing else"
 // in the satellite definition (design.md's pointer-tree-not-full-tree)
 // includes design.md: a change directory carrying link.md and a design.md

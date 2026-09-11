@@ -135,8 +135,34 @@ func linkRefFindings(t *tree.Tree, c model.Change, relPath string, ref model.Lin
 }
 
 // resolveCounterpart locates a change directory in peer tree p, searching
-// changes/<id>/ before changes/archive/<id>/ (independent-archive).
+// changes/<id>/ before changes/archive/<id>/ (independent-archive), then —
+// when neither exists — a worktree of p's own repository named after id
+// (<repo>/.worktrees/<id>/spectre, this project's own convention, per
+// repoParent's doc comment in tree.go). Peers() always resolves a peer
+// name to the repository's primary checkout, regardless of which worktree
+// issued the lookup, so p is never itself a worktree tree; before either
+// side of a cross-repo link has landed on its primary checkout, that
+// worktree is the only place the counterpart exists at all, and without
+// this fallback it reads as one-sided on both sides for as long as the
+// change lives only in worktrees.
 func resolveCounterpart(p *tree.Tree, id string) (dir string, archived, found bool) {
+	if dir, archived, found := resolveCounterpartInTree(p, id); found {
+		return dir, archived, found
+	}
+	wtSpectre := filepath.Join(filepath.Dir(p.Root), ".worktrees", id, "spectre")
+	if fi, err := os.Stat(wtSpectre); err != nil || !fi.IsDir() {
+		return "", false, false
+	}
+	wt, err := tree.Open(wtSpectre)
+	if err != nil {
+		return "", false, false
+	}
+	return resolveCounterpartInTree(wt, id)
+}
+
+// resolveCounterpartInTree is resolveCounterpart's search of one tree,
+// shared between the peer's primary checkout and its worktree fallback.
+func resolveCounterpartInTree(p *tree.Tree, id string) (dir string, archived, found bool) {
 	open := filepath.Join(p.ChangesDir(), id)
 	if fi, err := os.Stat(open); err == nil && fi.IsDir() {
 		return open, false, true
