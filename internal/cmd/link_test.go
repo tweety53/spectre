@@ -2,12 +2,30 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// commitAll commits everything currently in the git repo at dir, so a
+// fixture state created after gitInit reads as clean to
+// hasUncommittedModifications.
+func commitAll(t *testing.T, dir string) {
+	t.Helper()
+	for _, args := range [][]string{
+		{"add", "-A"},
+		{"-c", "user.email=a@b.c", "-c", "user.name=t", "commit", "-q", "-m", "fixture"},
+	} {
+		c := exec.Command("git", args...)
+		c.Dir = dir
+		if out, err := c.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+	}
+}
 
 // gitInit initializes a git repo at dir and commits everything currently
 // there, so later modifications show as uncommitted in `git status`.
@@ -85,6 +103,48 @@ func linkFixture(t *testing.T, canonicalID, satBranch string, canFiles map[strin
 	return satBase, canBase
 }
 
+// TestLinkCounterpartOnlyInPeerWorktree pins the link command's own worktree
+// fallback: the canonical change exists only under can's
+// .worktrees/kan-9-cross/spectre — never in the primary checkout's changes/ —
+// because before either side of a cross-repo link has landed on a primary
+// checkout, that worktree is the only place the counterpart exists (KAN-518:
+// the invoking-worktree half bc9f03b's resolveCounterpart and NamesFor fixes
+// left in the link command itself). Without the fallback Link refuses with
+// "does not exist" and the run escapes through link --force plus a
+// hand-written link.md.
+func TestLinkCounterpartOnlyInPeerWorktree(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+	satBase, canBase := linkFixture(t, "kan-9-cross", "feature-cross", nil)
+	wtChanges := filepath.Join(canBase, ".worktrees", "kan-9-cross", "spectre", "changes", "kan-9-cross")
+	if err := os.MkdirAll(filepath.Dir(wtChanges), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(filepath.Join(canBase, "spectre", "changes", "kan-9-cross"), wtChanges); err != nil {
+		t.Fatal(err)
+	}
+	commitAll(t, canBase)
+
+	var out, errBuf bytes.Buffer
+	if code := Link([]string{"--root", satBase, "can:kan-9-cross"}, &out, &errBuf); code != OK {
+		t.Fatalf("exit = %d, stderr = %s", code, errBuf.String())
+	}
+	canLink, err := os.ReadFile(filepath.Join(wtChanges, "link.md"))
+	if err != nil {
+		t.Fatalf("canonical link.md not written into the peer worktree: %v", err)
+	}
+	if !strings.Contains(string(canLink), "## Parts") || !strings.Contains(string(canLink), "`sat:kan-9-cross`") {
+		t.Errorf("canonical link.md = %s, want Parts sat:kan-9-cross", canLink)
+	}
+	// The primary checkout's changes/ stays empty: the fallback must write
+	// the counterpart where it lives, not create the change on the primary
+	// checkout.
+	if _, statErr := os.Stat(filepath.Join(canBase, "spectre", "changes", "kan-9-cross")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Errorf("primary changes/kan-9-cross exists (%v), want the counterpart confined to the worktree", statErr)
+	}
+}
+
 func TestLink(t *testing.T) {
 	satBase, canBase := linkFixture(t, "kan-9-cross", "feature-cross", nil)
 
@@ -92,7 +152,6 @@ func TestLink(t *testing.T) {
 	if code := Link([]string{"--root", satBase, "can:kan-9-cross"}, &out, &errBuf); code != OK {
 		t.Fatalf("exit = %d, stderr = %s", code, errBuf.String())
 	}
-
 	satLink, err := os.ReadFile(filepath.Join(satBase, "spectre", "changes", "kan-9-cross", "link.md"))
 	if err != nil {
 		t.Fatalf("satellite link.md not written: %v", err)

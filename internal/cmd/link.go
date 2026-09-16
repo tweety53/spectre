@@ -77,15 +77,38 @@ func Link(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return Usage
 	}
+	// The counterpart may exist only in the peer repository's own worktree
+	// (<repo>/.worktrees/<id>/spectre): before either side of a cross-repo
+	// link has landed on a primary checkout, that worktree is the only
+	// place the canonical change exists — the same fallback
+	// check.resolveCounterpart applies on the validate side. When it
+	// resolves there, the canonical side is read and written in the
+	// worktree, never created on the primary checkout.
+	canonicalTree := peerTree
 	if !hasChange(peerChanges, canonicalID) {
-		fmt.Fprintf(stderr, "canonical change %q does not exist in peer %q (%s)\n",
-			canonicalID, peerName, peerTree.ChangesDir())
-		return Fail
+		wt, ok := tree.CounterpartWorktree(peerTree, canonicalID)
+		var wtChanges []model.Change
+		if ok {
+			if wtChanges, err = wt.Changes(); err != nil {
+				fmt.Fprintln(stderr, err)
+				return Usage
+			}
+		}
+		if !hasChange(wtChanges, canonicalID) {
+			refusal := fmt.Sprintf("canonical change %q does not exist in peer %q (%s)",
+				canonicalID, peerName, peerTree.ChangesDir())
+			if ok {
+				refusal += fmt.Sprintf(" or its worktree %s", wt.ChangesDir())
+			}
+			fmt.Fprintln(stderr, refusal)
+			return Fail
+		}
+		canonicalTree = wt
 	}
-	canonicalDir := filepath.Join(peerTree.ChangesDir(), canonicalID)
+	canonicalDir := filepath.Join(canonicalTree.ChangesDir(), canonicalID)
 	canonicalLinkPath := filepath.Join(canonicalDir, check.LinkFile)
 
-	peerParser := parse.New(peerTree.Cfg)
+	peerParser := parse.New(canonicalTree.Cfg)
 	canLink, err := readLinkIfExists(peerParser, canonicalLinkPath)
 	if err != nil {
 		fmt.Fprintf(stderr, "%s: %v\n", canonicalID, err)
