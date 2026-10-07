@@ -1,7 +1,7 @@
 ---
 name: spectre
-description: Dispatch to any spectre subcommand — init, new, list, validate, refs, archive — show
-  its real output, name what typically comes next, and for `new`, fill in the three files it
+description: Dispatch to any spectre subcommand — init, new, list, validate, refs, archive, link —
+  show its real output, name what typically comes next, and for `new`, fill in the three files it
   scaffolds, through the bundled brainstorming and writing-plans skills.
 allowed-tools: Bash(spectre:*), Read, Edit, Write, Skill
 license: MIT
@@ -38,12 +38,13 @@ typically comes next, and **do not take that next step unasked**. `new` is the o
 
 1. Run `spectre new <change-id>` (with `--root <path>` if supplied); print its output and exit
    code. On a non-zero exit (the change exists, no spectre tree found), stop there.
-2. Read the three files under `changes/<change-id>/`. Their required headings are the
-   **`## File templates`** table in [README.md](../../../README.md) — read them from there.
+2. Read the three files under `changes/<change-id>/`. The scaffold already carries each file's
+   required headings, in order — keep them; extra headings are allowed. A capability spec's are in
+   [docs/spec-format.md](https://github.com/tweety53/spectre/blob/main/docs/spec-format.md).
 3. Fill them with the `brainstorming` and `writing-plans` skills bundled beside this one
    (`spectre:brainstorming` / `spectre:writing-plans` after a plugin install; a separately
    installed `superpowers:` copy works the same), as
-   [docs/superpowers-example.md](../../../docs/superpowers-example.md) shows:
+   [docs/superpowers-example.md](https://github.com/tweety53/spectre/blob/main/docs/superpowers-example.md) shows:
    - Invoke `brainstorming` to settle the design with the user, then write `proposal.md`,
      `design.md` and any capability spec from the approved design — into these files, not a
      separate design doc.
@@ -53,7 +54,7 @@ typically comes next, and **do not take that next step unasked**. `new` is the o
      `new`.
    - Skip the skills' own commit steps: the guardrails below still hold.
    - If neither skill is available, fill the files with the user by hand, following
-     [docs/example.md](../../../docs/example.md).
+     [docs/example.md](https://github.com/tweety53/spectre/blob/main/docs/example.md).
 4. Name `spectre validate` as the next step — do not run it.
 
 Only `new` invokes the bundled skills; every other subcommand stays dispatch-only.
@@ -66,8 +67,7 @@ Only `new` invokes the bundled skills; every other subcommand stays dispatch-onl
   <subcommand> --help` and show that.
 - Never commit, stage or `git mv` for the user — `spectre archive` needs the change's files
   already `git add`ed; suggesting that is as far as this skill goes.
-- For `new`: never invent the required headings or their order — read them from the README's
-  `## File templates` table.
+- For `new`: never remove or reorder the headings the scaffold wrote.
 - For `new`: never run `spectre validate`, `git add` or any other follow-on command unasked.
 
 ## Commands (user-facing)

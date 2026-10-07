@@ -205,6 +205,34 @@ func TestPluginManifestsAgree(t *testing.T) {
 				t.Errorf("%s/SKILL.md does not claim the plugin-install invocation %q for its own directory name",
 					name, invoke)
 			}
+			// A manual install copies only the skill directory, so a link
+			// climbing out of it resolves to nothing there.
+			if strings.Contains(string(own), "](../") {
+				t.Errorf("%s/SKILL.md links outside its own directory, which a manual install does not copy", name)
+			}
+		}
+	})
+
+	t.Run("skill description names every README command", func(t *testing.T) {
+		readme, err := os.ReadFile(filepath.Join(root, "README.md"))
+		if err != nil {
+			t.Fatalf("reading README.md: %v", err)
+		}
+		commands := regexp.MustCompile("(?m)^\\| `spectre ([a-z]+)").FindAllStringSubmatch(string(readme), -1)
+		if len(commands) == 0 {
+			t.Fatal("README.md's commands table lists no `spectre <command>` rows")
+		}
+
+		skill, err := os.ReadFile(filepath.Join(root, ".claude", "skills", "spectre", "SKILL.md"))
+		if err != nil {
+			t.Fatalf("reading spectre/SKILL.md: %v", err)
+		}
+		_, rest, _ := strings.Cut(string(skill), "description:")
+		description, _, _ := strings.Cut(rest, "\nallowed-tools:")
+		for _, c := range commands {
+			if !regexp.MustCompile(`\b` + c[1] + `\b`).MatchString(description) {
+				t.Errorf("spectre/SKILL.md's description does not name the %q command", c[1])
+			}
 		}
 	})
 }
