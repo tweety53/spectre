@@ -22,6 +22,9 @@ typically comes next, and **do not take that next step unasked**. `new` is the o
 ## Workflow
 
 1. Take the subcommand and arguments from the invocation verbatim — no remapping, no added flags.
+   One exception: `archive` without a change id. Run `spectre list --json` (with `--root` if
+   supplied) and read its `changes[].id`: exactly one open change — use that id; none or several
+   — show the ids and ask which one.
 2. Run `spectre <subcommand> <args>` (`--root <path>` only if the user supplied one; it must come
    before any positional change id).
 3. Print the real stdout/stderr and the exit code.
@@ -57,7 +60,7 @@ Only `new` invokes the bundled skills; every other subcommand stays dispatch-onl
 
 ## Guardrails
 
-- Never run a subcommand the user didn't ask for.
+- Never run a subcommand the user didn't ask for — save the `spectre list --json` lookup above.
 - Never invent output — only what the binary printed.
 - Never invent a subcommand, flag or behaviour; if unsure, run `spectre --help` or `spectre
   <subcommand> --help` and show that.
