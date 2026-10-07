@@ -28,7 +28,7 @@ func boundaryAfter(text, token string) bool {
 func cpDestinationLine(t *testing.T, readme string) string {
 	t.Helper()
 	var lines []string
-	for _, line := range strings.Split(readme, "\n") {
+	for line := range strings.SplitSeq(readme, "\n") {
 		if strings.Contains(line, "cp -r") && strings.Contains(line, "~/.claude/skills") {
 			lines = append(lines, line)
 		}
@@ -187,6 +187,13 @@ func TestPluginManifestsAgree(t *testing.T) {
 			if !boundaryAfter(cpLine, cpTarget) {
 				t.Errorf("README.md's manual-install command (%q) does not name the real skill directory %q (want it to reference %q)",
 					cpLine, name, cpTarget)
+			}
+
+			// A skill bundled unmodified from another project carries
+			// UPSTREAM.md and keeps its upstream text, so it cannot claim
+			// spectre's plugin invocation.
+			if _, err := os.Stat(filepath.Join(skillsDir, name, "UPSTREAM.md")); err == nil {
+				continue
 			}
 
 			own, err := os.ReadFile(filepath.Join(skillsDir, name, "SKILL.md"))

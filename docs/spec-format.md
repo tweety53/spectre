@@ -14,9 +14,10 @@ Sessions and tokens.
 - R2: The picker SHALL show only enabled plans (@R1)
 ```
 
-Requirement ids are `R<n>` by default (configurable, see [per-repository configuration](configuration.md)), unique within the file and
-gap-free. They are stable once written: other trees cite them, and renumbering makes those
-citations dangle. `(@R1)` above cites a requirement in this same file — see
-[references across trees](references.md) for the other two citation forms, which cite a
-capability or a peer tree and only resolve once that capability, or a `peers` entry for that
-peer, actually exists.
+- Ids are `R<n>` by default ([configurable](configuration.md)), unique within the file and
+  gap-free.
+- Ids are stable once written: other trees cite them, and renumbering leaves those citations
+  dangling.
+- `(@R1)` cites this same file; the capability and peer forms
+  ([references across trees](references.md)) resolve only once that capability, or that peer's
+  `peers` entry, exists.

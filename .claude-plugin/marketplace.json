@@ -8,7 +8,7 @@
     {
       "name": "spectre",
       "source": "./",
-      "description": "The spectre skill for the spectre CLI: spec-driven change tracking in markdown."
+      "description": "The spectre skill for the spectre CLI, with superpowers' brainstorming and writing-plans skills bundled: spec-driven change tracking in markdown."
     }
   ]
 }

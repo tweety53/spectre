@@ -1,12 +1,11 @@
 # Example: multi-channel-notifications
 
-One change, followed end to end: an empty directory, a spectre tree, a change proposed, specified,
-planned, validated, worked and archived. Each step below is a prompt — paste it into an AI coding
-agent, which runs the `spectre` commands itself; the reader types nothing. Every file body shown is
-the real body produced by following these prompts against a built `spectre` binary in a scratch git
-repository, not a paraphrase. The subject is a backend that today sends every notification by email
-and wants to add SMS, messenger and push, so users who never open email still get notified. It is a
-stand-in: no framework, no vendor, no language, so what carries over is the shape, not the domain.
+One change, end to end, as prompts for an AI coding agent, which runs the `spectre` commands
+itself. Every body shown is real output against a built `spectre` binary in a scratch git repository. The subject — an
+email-only backend adding SMS, messenger and push — is a language-free stand-in.
+
+The recommended path fills the same change with superpowers' brainstorming and writing-plans:
+[superpowers-example.md](superpowers-example.md).
 
 ## 1. Create the tree
 
@@ -24,9 +23,8 @@ spectre/
   changes/
 ```
 
-`spectre init` never overwrites what already exists; it only fills in what's missing, so it's safe
-to run again later. `specs/` will hold the capability this change touches; `changes/` will hold the
-change itself. Nothing here needs editing by hand yet.
+- `spectre init` only fills in what's missing, so re-running it is safe.
+- `specs/` holds capabilities, `changes/` changes; nothing needs editing yet.
 
 ## 2. Scaffold the change
 
@@ -69,11 +67,11 @@ Paste this into an AI coding agent:
 <!-- what was chosen, what was considered, and why -->
 ```
 
-Check by hand: nothing here is content yet — every heading is either a title or an HTML comment.
-That's deliberate: `new` scaffolds shape, not prose. If the agent were asked to validate the tree
-at this point, it would find one finding — `tasks.md` has no tasks — because a change with no
-tasks is a change nobody can work or archive; that finding is the tool saying what to do next
-(write the plan), and it clears once `tasks.md` has at least one task, after step 5.
+Check by hand:
+
+- Only titles and HTML comments — `new` scaffolds shape, not prose.
+- `validate` here reports one finding, `no tasks`: the next thing to write. It clears once
+  `tasks.md` has a task, after step 5.
 
 ## 3. Write the capability spec
 
@@ -109,10 +107,10 @@ actually likely to see, instead of always sending email regardless of whether it
   only one preference for all notifications.
 ```
 
-Check by hand: the ids really are gap-free and start at `R1` — `R1`, `R2`, `R3`, `R4`, no skips
-and no repeats — and every bullet's text contains `SHALL`. An agent that quietly drops a
-requirement or reuses an id produces a file that reads fine and still fails `validate`, or worse,
-passes it while citing a requirement that isn't there.
+Check by hand:
+
+- Ids run `R1`–`R4`, no skips or repeats, and every bullet contains `SHALL` — a dropped or reused
+  id reads fine and still fails `validate`.
 
 ## 4. Fill in the proposal
 
@@ -149,9 +147,10 @@ Wrote `spectre/changes/multi-channel-notifications/proposal.md`.
   enabled channel before giving up.
 ```
 
-Check by hand: the title is exactly `# multi-channel-notifications` — the change's directory name,
-not a restatement like `# Multi-Channel Notifications` — and `## Why` still precedes `## What
-changes`. A heading swapped or reworded here is exactly the template drift `validate` now catches.
+Check by hand:
+
+- The title is exactly the directory name, not `# Multi-Channel Notifications`, and `## Why`
+  precedes `## What changes` — `validate` catches either drift.
 
 ## 5. Fill in the tasks
 
@@ -198,10 +197,10 @@ already receive, so the fallback in task 4 has a defined starting point instead 
 implicit default.
 ```
 
-Check by hand: the numbers run 1 through 5 with no gaps and no repeats, and the order really is
-dependency order — task 2 depends on the interface task 1 adds, tasks 3 and 4 depend on the
-channels task 2 adds. A plan that reads plausibly but ships task 4 before task 2 is a plan that
-can't actually be worked in the order it's written.
+Check by hand:
+
+- Numbers run 1–5 with no gaps or repeats.
+- Dependency order holds: task 2 needs task 1's interface; tasks 3 and 4 need task 2's channels.
 
 ## 6. Fill in the design
 
@@ -258,9 +257,11 @@ user's absence of a row, and the two would need to be changed together if the de
 changed.
 ```
 
-Check by hand: `## Context` precedes `## Decisions`, and every decision names a real alternative
-with a concrete reason it lost — not just "chosen for simplicity." A design record that only ever
-states the winner isn't recording a decision, it's recording an opinion.
+Check by hand:
+
+- `## Context` precedes `## Decisions`.
+- Every decision names a real alternative and a concrete reason it lost — not "chosen for
+  simplicity".
 
 ## 7. Validate the finished change
 
@@ -268,9 +269,7 @@ Paste this into an AI coding agent:
 
 > Run `spectre validate` and confirm it reports no findings.
 
-With every file above now satisfying its template — the capability spec, the proposal, the tasks,
-the design — `validate` reports no findings and exits 0. The `tasks.md` finding from step 2 is
-gone now that the tasks it was complaining about exist.
+`validate` reports no findings and exits 0; step 2's `no tasks` finding is gone.
 
 ## 8. Work the tasks
 
@@ -280,17 +279,16 @@ Paste this into an AI coding agent:
 > abstraction — then run the project's own build and tests, then check its box in `tasks.md`, then
 > commit. Repeat for tasks 2 through 5, in order.
 
-Working a task means writing the code it describes, then checking its box:
+Per task: write the code, then check its box:
 
 ```diff
 -- [ ] 1. Add a channel abstraction behind the existing email sender
 +- [x] 1. Add a channel abstraction behind the existing email sender
 ```
 
-`validate` doesn't care whether a box is checked — a task-sequence finding only fires on a
-missing, duplicate or malformed task number, never on a box's state. The checkbox exists for
-`archive`, which is the next and last step. This loop — not any single `spectre` command — is the
-bulk of a real change.
+- `validate` ignores box state; a task-sequence finding fires only on a missing, duplicate or
+  malformed task number. The box exists for `archive`.
+- This loop, not any `spectre` command, is the bulk of a real change.
 
 ## 9. Archive the finished change
 
@@ -300,9 +298,7 @@ Paste this into an AI coding agent:
 > If it refuses because a task is unchecked, go back and check the remaining boxes in `tasks.md`,
 > then run `archive` again.
 
-`archive` moves a change with `git mv`, so the tree has to be a git repository and the change's
-files have to already be tracked — that's what the `git add` covers. With any task still
-unchecked, `archive` refuses rather than moving an unfinished change; once every task is checked,
-it succeeds. `spectre/changes/multi-channel-notifications/` becomes
-`spectre/changes/archive/multi-channel-notifications/`, moved with `git mv`, staged but not
-committed — committing it is the last step, same as any other change to the tree.
+- `archive` uses `git mv`, so the change's files must be tracked — hence the `git add`.
+- It refuses while any task is unchecked.
+- The change moves to `spectre/changes/archive/multi-channel-notifications/`, staged, not
+  committed — committing is the last step.

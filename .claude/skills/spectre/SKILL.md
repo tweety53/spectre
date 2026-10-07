@@ -1,9 +1,9 @@
 ---
 name: spectre
 description: Dispatch to any spectre subcommand — init, new, list, validate, refs, archive — show
-  its real output, name what typically comes next, and for `new`, help fill in the three files it
-  scaffolds.
-allowed-tools: Bash(spectre:*), Read, Edit
+  its real output, name what typically comes next, and for `new`, fill in the three files it
+  scaffolds, through the bundled brainstorming and writing-plans skills.
+allowed-tools: Bash(spectre:*), Read, Edit, Write, Skill
 license: MIT
 compatibility: Requires the spectre CLI on PATH (or built locally as `spectre`).
 metadata:
@@ -13,55 +13,59 @@ metadata:
 
 `/spectre <subcommand> [args]` in a checkout or after a manual copy, or `/spectre:spectre
 <subcommand> [args]` after a `/plugin install`, runs that spectre subcommand and shows its **real**
-output — never a description of what it would print. It covers every subcommand spectre has by
-dispatching to the binary, not by re-describing each one's behaviour here, which would drift from
-the binary the moment either changes.
+output. It dispatches to the binary rather than describing each subcommand here, which would drift
+from the binary.
 
-**Thin, plus next-step guidance — not automation.** Run the command, show what it actually printed,
-then name what typically comes next. **Do not take that next step unasked** — if the likely next
-command is `spectre validate` or `git add`, say so and stop; do not run it. `new` is the one named
-exception — see below.
+**Thin, plus next-step guidance — not automation.** Run the command, show its output, name what
+typically comes next, and **do not take that next step unasked**. `new` is the one exception.
 
 ## Workflow
 
-1. Take the subcommand and any arguments from the user's invocation verbatim — no remapping, no
-   added flags.
-2. Run `spectre <subcommand> <args>` (add `--root <path>` only if the user supplied one; every
-   spectre command accepts it, and it must come before any positional change id).
-3. Print the command's real stdout/stderr and its exit code.
-4. Name the likely next step, briefly, based on the exit code and subcommand — e.g. after `init`,
-   that `new <change-id>` scaffolds a change; after `validate` reports findings, that they need
-   fixing before archiving; after a clean `validate`, that the change is ready to work or archive.
-   State it as a suggestion, not an action taken — except for `new`, below.
+1. Take the subcommand and arguments from the invocation verbatim — no remapping, no added flags.
+2. Run `spectre <subcommand> <args>` (`--root <path>` only if the user supplied one; it must come
+   before any positional change id).
+3. Print the real stdout/stderr and the exit code.
+4. Suggest the likely next step from the exit code and subcommand — e.g. after `init`, `new
+   <change-id>`; after `validate` with findings, fix them before archiving; after a clean
+   `validate`, the change is ready to work or archive.
 
 ### `new` — the one exception
 
-`new` alone leaves three stubs and a change that reports `no tasks` until a plan exists, so
-scaffold-then-fill is the useful unit, and it is the one case where this skill goes past showing
-output:
+`new` leaves three stubs and a change reporting `no tasks`, so scaffold-then-fill is the unit:
 
-1. Run `spectre new <change-id>` (with `--root <path>` if the user supplied one). Print its real
-   output and exit code. If it exits non-zero (e.g. the change already exists, or no spectre tree
-   was found), stop and show that — do not proceed to filling anything in.
-2. Read the three files it wrote — `proposal.md`, `tasks.md`, `design.md` under
-   `changes/<change-id>/`. Their required headings are the **`## File templates`** table in
-   [README.md](../../../README.md); do not restate that order here.
-3. Help the user write each file's content, following the prompts and worked example in
-   [docs/example.md](../../../docs/example.md) — link to it and to the README rather than repeating
-   what those documents already state.
-4. Once filled in, name the next step — running `spectre validate` — without running it unasked.
+1. Run `spectre new <change-id>` (with `--root <path>` if supplied); print its output and exit
+   code. On a non-zero exit (the change exists, no spectre tree found), stop there.
+2. Read the three files under `changes/<change-id>/`. Their required headings are the
+   **`## File templates`** table in [README.md](../../../README.md) — read them from there.
+3. Fill them with the `brainstorming` and `writing-plans` skills bundled beside this one
+   (`spectre:brainstorming` / `spectre:writing-plans` after a plugin install; a separately
+   installed `superpowers:` copy works the same), as
+   [docs/superpowers-example.md](../../../docs/superpowers-example.md) shows:
+   - Invoke `brainstorming` to settle the design with the user, then write `proposal.md`,
+     `design.md` and any capability spec from the approved design — into these files, not a
+     separate design doc.
+   - Then invoke `writing-plans` to write `tasks.md` in spectre's task shape: column-0
+     `- [ ] <n>. <title>` task lines, flat integer ids, and `  - [ ] **Step N: …**` steps indented
+     two columns beneath their task. Stop once it is written — executing the plan is not part of
+     `new`.
+   - Skip the skills' own commit steps: the guardrails below still hold.
+   - If neither skill is available, fill the files with the user by hand, following
+     [docs/example.md](../../../docs/example.md).
+4. Name `spectre validate` as the next step — do not run it.
+
+Only `new` invokes the bundled skills; every other subcommand stays dispatch-only.
 
 ## Guardrails
 
 - Never run a subcommand the user didn't ask for.
-- Never invent output — only what the binary actually printed.
-- Never invent a subcommand, flag, or behaviour spectre does not have; if unsure, run `spectre
-  --help` or `spectre <subcommand> --help` and show that instead of guessing.
-- Never commit, stage, or `git mv` on the user's behalf — `spectre archive` itself needs the
-  change's files already `git add`ed; suggesting that is as far as this command goes.
-- For `new`: never invent the required headings or their order — they live only in the README's
-  `## File templates` table and must be read from there, not repeated from memory.
-- For `new`: never run `spectre validate`, `git add`, or any other follow-on command unasked.
+- Never invent output — only what the binary printed.
+- Never invent a subcommand, flag or behaviour; if unsure, run `spectre --help` or `spectre
+  <subcommand> --help` and show that.
+- Never commit, stage or `git mv` for the user — `spectre archive` needs the change's files
+  already `git add`ed; suggesting that is as far as this skill goes.
+- For `new`: never invent the required headings or their order — read them from the README's
+  `## File templates` table.
+- For `new`: never run `spectre validate`, `git add` or any other follow-on command unasked.
 
 ## Commands (user-facing)
 

@@ -3,67 +3,78 @@
 Spec-driven change tracking in markdown. One binary, no dependencies, no database: the tree on
 disk is the entire state.
 
+## Install
+
+- Binary: `go install github.com/tweety53/spectre/cmd/spectre@latest`, or build locally with
+  `go build -o bin/spectre ./cmd/spectre`.
+- The skills — `spectre`, plus the bundled `brainstorming` and `writing-plans` — install
+  separately from the binary. In **Claude Code**, this repository is its own plugin
+  marketplace:
+
+  ```
+  /plugin marketplace add tweety53/spectre
+  /plugin install spectre@spectre
+  ```
+
+  A plugin install namespaces the skills: the command becomes `/spectre:spectre <subcommand>
+  [args]`. `/plugin marketplace update spectre` picks up later changes.
+- **With any other agent**, copy the skill directories into the skills directory that agent reads
+  (for Claude Code, `~/.claude/skills/`):
+
+  ```bash
+  git clone https://github.com/tweety53/spectre /tmp/spectre
+  mkdir -p ~/.claude/skills
+  cp -r /tmp/spectre/.claude/skills/spectre /tmp/spectre/.claude/skills/brainstorming /tmp/spectre/.claude/skills/writing-plans ~/.claude/skills/
+  ```
+
+- The `spectre` skill dispatches to the binary, so `spectre` must be on `PATH`. Inside a checkout of
+  this repository no install is needed — Claude Code reads [.claude/skills/](.claude/skills/)
+  directly, as `/spectre` — as does a manual copy.
+
+## Bundled: brainstorming and writing-plans
+
+spectre checks the shape of a change; what fills it decides its quality. Two skills from
+[superpowers](https://github.com/obra/superpowers) fill it best, and ship with this plugin —
+nothing else to install:
+
+- `brainstorming` settles the design with you, then writes `proposal.md`, `design.md` and the
+  capability spec.
+- `writing-plans` turns them into a test-first `tasks.md` — files, tests, verify commands and
+  commits per task, steps indented under spectre's column-0 tasks.
+- The `spectre` skill's `new` runs both.
+- They are unmodified superpowers v6.4.2, MIT, © Jesse Vincent; each directory's `UPSTREAM.md`
+  names the source commit. A separately installed superpowers works the same.
+- Installed, they are ordinary skills available in every project, not only inside `spectre new`;
+  beside a separate superpowers install you have two copies of each, and the manual `cp -r` merges
+  into an existing `~/.claude/skills/brainstorming` or `writing-plans` rather than replacing it.
+- Worked example: [docs/superpowers-example.md](docs/superpowers-example.md). Filling by hand
+  instead: [docs/example.md](docs/example.md).
+
 ## Quick start
 
-spectre is meant to be driven by an AI coding agent, not typed at by hand: hand it each prompt
-below and it runs the `spectre` commands itself. This is the short path — the full walkthrough,
-with every prompt and every generated file body in full, is [docs/example.md](docs/example.md).
-Claude Code users can instead run the `spectre` skill — `/spectre` in a checkout or after a
-manual copy, `/spectre:spectre` after a plugin install — which installs separately, see below.
-Prefer typing the commands yourself? The same journey, as commands and their real output instead
-of prompts, is [docs/terminal.md](docs/terminal.md).
+spectre is driven by an AI coding agent: hand it one prompt per step and it runs the commands —
+or run the `spectre` skill instead.
+Every prompt and file body is in [docs/example.md](docs/example.md); the same journey as typed
+commands and real output is [docs/terminal.md](docs/terminal.md).
 
-Install first: `go install github.com/tweety53/spectre/cmd/spectre@latest`, or build locally with
-`go build -o bin/spectre ./cmd/spectre`.
-
-The `spectre` skill installs separately from the binary. In **Claude Code**, this repository is its
-own plugin marketplace:
-
-```
-/plugin marketplace add tweety53/spectre
-/plugin install spectre@spectre
-```
-
-A plugin install namespaces the skill by the plugin name, so the command becomes
-`/spectre:spectre <subcommand> [args]`. `/plugin marketplace update spectre` picks up later
-changes to it. **With any other agent**, copy the skill directory into whatever skills directory
-that agent reads — for Claude Code that directory is `~/.claude/skills/`, and others differ:
-
-```bash
-git clone https://github.com/tweety53/spectre /tmp/spectre
-mkdir -p ~/.claude/skills
-cp -r /tmp/spectre/.claude/skills/spectre ~/.claude/skills/
-```
-
-Either way the skill only dispatches to the binary, so `spectre` still has to be on `PATH`.
-Inside a checkout of this repository no install is needed — Claude Code reads
-[.claude/skills/](.claude/skills/) directly.
-
-Then, one prompt per step:
-
-1. *Set up a spectre tree in the current directory* (run `git init` first if it isn't already a
-   git repository, then `spectre init`) — see [step 1](docs/example.md#1-create-the-tree).
-2. *Scaffold the change* with `spectre new <change-id>` (`new` refuses to run until the tree from
-   step 1 exists — it does not create one for you) — see
-   [step 2](docs/example.md#2-scaffold-the-change).
-3. *Write the capability spec, then `proposal.md`, `tasks.md` and `design.md`, each following the
-   required headings its row gives in [File templates](#file-templates)* — see
-   [steps 3–6](docs/example.md#3-write-the-capability-spec) for the worked bodies.
-4. *Run `spectre validate` and confirm no findings* — see
+1. *Set up a spectre tree* (`git init` first if needed, then `spectre init`) —
+   [step 1](docs/example.md#1-create-the-tree).
+2. *Scaffold the change* with `spectre new <change-id>`; `new` refuses until the tree exists and
+   never creates one — [step 2](docs/example.md#2-scaffold-the-change).
+3. *Write the capability spec, then `proposal.md`, `tasks.md` and `design.md`*, each with the
+   headings [File templates](#file-templates) requires —
+   [steps 3–6](docs/example.md#3-write-the-capability-spec).
+4. *Run `spectre validate` and confirm no findings* —
    [step 7](docs/example.md#7-validate-the-finished-change).
-5. Implement the change, one task at a time: *"implement task 1"*, then the project's own build
-   and tests, then *"tick task 1's box"*, then commit — repeated per task. This loop, not any
-   single `spectre` command, is the bulk of a real change; see
-   [step 8](docs/example.md#8-work-the-tasks).
-6. Stage the change (`git add spectre` — `archive` moves it with `git mv`, which needs the tree
-   inside a git repository with the change's files already tracked) and *archive it* with `spectre
-   archive <change-id>` — see [step 9](docs/example.md#9-archive-the-finished-change).
+5. Per task: implement it, run the project's build and tests, tick its box, commit. This loop, not
+   any `spectre` command, is the bulk of a change — [step 8](docs/example.md#8-work-the-tasks).
+6. `git add spectre`, then `spectre archive <change-id>` —
+   [step 9](docs/example.md#9-archive-the-finished-change).
 
-One flag-order rule applies to every command: without it, every command searches upwards from the
-working directory for a directory literally named `spectre`; `--root <path>` names the tree
-explicitly instead of searching for it. And because Go's `flag` package stops parsing flags at the
-first positional argument, `--root` must come **before** the change id, e.g. `spectre validate
---root . my-change`, not after it.
+Every command searches upwards from the working directory for a directory literally named
+`spectre`; `--root <path>` names the tree instead. Go's `flag` package stops at the first
+positional argument, so `--root` must come **before** the change id: `spectre validate --root .
+my-change`, not after it.
 
 ## The tree
 
@@ -79,13 +90,12 @@ spectre/
   changes/archive/<id>/
 ```
 
-`new` scaffolds all three files under `changes/<id>/` — see [file templates](#file-templates) below
-for the headings each one must carry.
+`new` scaffolds `proposal.md`, `tasks.md` and `design.md` under `changes/<id>/`.
 
 ## File templates
 
-`validate` checks that each generated file carries its required headings, in order; a file is free
-to carry extra headings beyond these.
+`validate` checks that each file carries its required headings, in order; extra headings are
+allowed.
 
 | File | Required headings, in order |
 |---|---|
@@ -95,8 +105,8 @@ to carry extra headings beyond these.
 | `link.md` | no fixed headings; `## Part of`/`## Parts`/`## Branch`/`## Merge order`/`## Tasks here` grammar — see [links across repositories](docs/links.md) |
 | `specs/<capability>.md` | `# <capability>`, `## Purpose`, `## Requirements` — see [spec format](docs/spec-format.md) |
 
-`tasks.md` is also checked for having at least one task: a freshly scaffolded change reports `no
-tasks` under `task-sequence` until a task is added.
+`tasks.md` must also hold at least one task: a fresh scaffold reports `no tasks` under
+`task-sequence` until one is added.
 
 ## Commands
 
@@ -110,49 +120,32 @@ tasks` under `task-sequence` until a task is added.
 | `spectre archive <change-id>` | `--root`, `--force` | `git mv`s a finished change into `changes/archive/` |
 | `spectre link <peer>:<canonical-id>` | `--root`, `--force` | links this tree to a canonical change in a peer tree |
 
-Exit codes are a contract every command holds to: `0` success, `1` findings or a content refusal,
-`2` a usage or IO error.
-
-## Spec format
-
-How a capability spec file is written and how requirement ids work — see
-[docs/spec-format.md](docs/spec-format.md).
-
-## References across trees
-
-The three citation forms — same file, same tree, peer tree — and how `validate` and `refs` use
-them — see [docs/references.md](docs/references.md).
-
-## Links across repositories
-
-A change that spans more than one repository's spectre tree, `spectre link`'s guarded two-sided
-write, and what `validate` checks and deliberately does not — see
-[docs/links.md](docs/links.md).
-
-## Per-repository configuration
-
-What `spectre/config.md` can override, and what stays fixed — see
-[docs/configuration.md](docs/configuration.md).
+Exit codes, for every command: `0` success, `1` findings or a content refusal, `2` a usage or IO
+error.
 
 ## `archive`
 
-```bash
-spectre archive <change-id>
-```
+`spectre archive <change-id>` `git mv`s a finished change into `changes/archive/` and does not
+commit.
 
-`git mv`s a finished change into `changes/archive/`. It does not commit. This means the tree has to
-be inside a git repository with the change's files already tracked (`git add`) — if either isn't
-true, `git mv`'s own error is prefixed with that requirement and the command exits 2, since this is
-an environment problem rather than one of the content refusals below.
+- The tree must be inside a git repository with the change's files tracked (`git add`); otherwise
+  `git mv`'s own error is prefixed with that requirement and the command exits 2 — an environment
+  problem, not a content refusal.
+- Content refusals, each overridable with `--force`: no `tasks.md`; `tasks.md` with no tasks;
+  one or more unchecked tasks.
+- The destination already existing under `changes/archive/` is refused and **not** overridden by
+  `--force`; resolve the collision by hand.
 
-It refuses three content problems, each overridable with `--force`:
+## Further reading
 
-- no `tasks.md`
-- `tasks.md` with no tasks at all
-- one or more unchecked tasks
-
-A fourth refusal — the destination already exists under `changes/archive/` — is **not** overridden
-by `--force`; the collision has to be resolved by hand.
+- [Spec format](docs/spec-format.md) — how a capability spec is written and how requirement ids
+  work.
+- [References across trees](docs/references.md) — the three citation forms and how `validate`
+  and `refs` use them.
+- [Links across repositories](docs/links.md) — a change spanning several trees, `spectre link`'s
+  guarded two-sided write, and what `validate` checks and deliberately does not.
+- [Per-repository configuration](docs/configuration.md) — what `spectre/config.md` can override,
+  and what stays fixed.
 
 ## What spectre does not do
 
