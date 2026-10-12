@@ -24,7 +24,8 @@ repeated heading is a parse error naming both lines, as in `peers`. A file is on
 - **Satellite:** `## Part of`, `## Branch`, optional `## Tasks here`. `## Parts` and `## Merge order`
   are rejected beside `## Part of` — links are one level deep.
 - **Canonical:** `## Parts`, `## Branch`, optional `## Merge order`. `## Tasks here` is rejected
-  beside `## Parts`.
+  beside `## Parts`. A canonical change whose other repositories carry no satellite may hold
+  `## Merge order` alone, naming `.` and peers its tree's `peers` file declares.
 - `## Part of` and `## Parts` never appear together.
 
 ### `## Part of`
