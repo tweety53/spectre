@@ -135,7 +135,7 @@ func TestLinkFindings(t *testing.T) {
 			name:     "merge order unknown entry",
 			canFiles: map[string]string{"link.md": canLinkMD("b", "1. `sat`\n2. `.`\n3. `ghost`\n"), "proposal.md": goodProposal, "tasks.md": oneTaskTasksFile},
 			side:     "can",
-			want:     `merge order: "ghost" is not "." or a declared part`,
+			want:     `merge order: "ghost" is not ".", a declared part or a declared peer`,
 		},
 		{
 			name:     "branch mismatch",
@@ -197,6 +197,26 @@ func TestLinkFindingsQuiet(t *testing.T) {
 		}
 		if got := findings(t, sat); len(got) != 0 {
 			t.Errorf("want no findings for a declared-but-absent peer, got:\n%s", findingMsgs(got))
+		}
+	})
+
+	// A repository the change spans without a spectre link — a declared
+	// peer, not a "## Parts" entry — still belongs in "## Merge order",
+	// which sequences landing across every repository the change touches.
+	t.Run("merge order names a declared peer that is not a part", func(t *testing.T) {
+		parent := t.TempDir()
+		base := testtree.Build(t, parent, "be", nil, "fe ../fe\n") // "fe" never built
+		testtree.Change(t, base, "x", false, map[string]string{
+			"link.md":     "## Merge order\n\n1. `.`\n2. `fe`\n",
+			"proposal.md": goodProposal,
+			"tasks.md":    oneTaskTasksFile,
+		})
+		be, err := tree.Open(base)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := findings(t, be); len(got) != 0 {
+			t.Errorf("want no findings for a merge order naming a declared peer, got:\n%s", findingMsgs(got))
 		}
 	})
 

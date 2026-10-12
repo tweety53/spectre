@@ -49,8 +49,10 @@ func IsSatellite(dir string) bool {
 //     Branch" must agree, and — on the satellite side — every "## Tasks
 //     here" number must match a task in the canonical's tasks.md;
 //   - "## Merge order", when present, must name "." exactly once and
-//     every "## Parts" entry exactly once — independent of any peer's
-//     resolution, since it is checked against link's own Parts list.
+//     every "## Parts" entry exactly once; it may also name, once each,
+//     peers declared in peers that are not parts — repositories the change
+//     spans without a link, which landing still has to sequence. None of
+//     this depends on any peer's resolution beyond being declared.
 //
 // relPath is link.md's path relative to the tree root, for Finding.File.
 func LinkFindings(t *tree.Tree, c model.Change, link model.Link, relPath string, peers map[string]tree.ResolvedPeer) []Finding {
@@ -63,7 +65,7 @@ func LinkFindings(t *tree.Tree, c model.Change, link model.Link, relPath string,
 		out = append(out, linkRefFindings(t, c, relPath, part, link, peers, false)...)
 	}
 	if len(link.MergeOrder) > 0 {
-		out = append(out, mergeOrderFindings(relPath, link)...)
+		out = append(out, mergeOrderFindings(relPath, link, peers)...)
 	}
 
 	return out
@@ -199,10 +201,11 @@ func namesBack(t *tree.Tree, p *tree.Tree, ourID string, cLink model.Link, isPar
 }
 
 // mergeOrderFindings checks link.MergeOrder against link.Parts: "." must
-// appear exactly once and every Parts peer name exactly once, and nothing
-// else. Missing, duplicated and unknown entries are three distinct
-// findings, reported in a deterministic (sorted) order.
-func mergeOrderFindings(relPath string, link model.Link) []Finding {
+// appear exactly once and every Parts peer name exactly once. A declared
+// peer that is not a part may appear (at most once) but is never required;
+// anything else is unknown. Missing, duplicated and unknown entries are
+// three distinct findings, reported in a deterministic (sorted) order.
+func mergeOrderFindings(relPath string, link model.Link, peers map[string]tree.ResolvedPeer) []Finding {
 	want := map[string]bool{".": true}
 	for _, p := range link.Parts {
 		want[p.Peer] = true
@@ -212,9 +215,10 @@ func mergeOrderFindings(relPath string, link model.Link) []Finding {
 	var out []Finding
 	for _, item := range link.MergeOrder {
 		seen[item]++
-		if !want[item] {
+		rp, declared := peers[item]
+		if !want[item] && (!declared || rp.Resolution == tree.PeerNotDeclared) {
 			out = append(out, Finding{File: relPath, Line: 1, Msg: fmt.Sprintf(
-				"merge order: %q is not \".\" or a declared part", item)})
+				"merge order: %q is not \".\", a declared part or a declared peer", item)})
 		}
 	}
 

@@ -78,8 +78,10 @@ For every change carrying `link.md`:
 - satellite: every `## Tasks here` number must match a task in the canonical `tasks.md`; each
   unmatched number is a finding naming it;
 - canonical, with `## Merge order`: it names `.` exactly once and every `## Parts` entry exactly
-  once, nothing else — missing, duplicated and unknown entries are three distinct findings,
-  compared against this `link.md` alone, independent of peer resolution.
+  once; it may also name, at most once each, peers declared in `peers` that are not parts — a
+  repository the change spans without a link, which landing still sequences — and nothing else.
+  Missing, duplicated and unknown entries are three distinct findings, compared against this
+  `link.md` and the declared peer names, independent of peer resolution.
 
 ### What it deliberately does not check
 
