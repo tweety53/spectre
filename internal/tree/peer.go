@@ -102,20 +102,25 @@ func NamesFor(declared map[string]string, root string) map[string]bool {
 }
 
 // CounterpartWorktree returns p's repository's own worktree tree named
-// after id — <repo>/.worktrees/<id>/spectre, repoParent's convention —
-// reporting whether it exists and opens. Before either side of a
+// after id — <repo>/.worktrees/<id>/spectre, or the sibling layout
+// <repo>-worktrees/<id>/spectre that flow creates (KAN-975), in that
+// order — reporting whether one exists and opens. Before either side of a
 // cross-repo link has landed on a primary checkout, that worktree is the
 // only place the counterpart change exists at all.
 func CounterpartWorktree(p *Tree, id string) (*Tree, bool) {
-	wtSpectre := filepath.Join(filepath.Dir(p.Root), ".worktrees", id, "spectre")
-	if fi, err := os.Stat(wtSpectre); err != nil || !fi.IsDir() {
-		return nil, false
+	repo := filepath.Dir(p.Root)
+	for _, wtSpectre := range []string{
+		filepath.Join(repo, ".worktrees", id, "spectre"),
+		filepath.Join(repo+"-worktrees", id, "spectre"),
+	} {
+		if fi, err := os.Stat(wtSpectre); err != nil || !fi.IsDir() {
+			continue
+		}
+		if wt, err := Open(wtSpectre); err == nil {
+			return wt, true
+		}
 	}
-	wt, err := Open(wtSpectre)
-	if err != nil {
-		return nil, false
-	}
-	return wt, true
+	return nil, false
 }
 
 func sameDir(a, b string) bool {

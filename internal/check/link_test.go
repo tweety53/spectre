@@ -305,6 +305,30 @@ func TestLinkFindingsCounterpartOnlyInPeerWorktree(t *testing.T) {
 	}
 }
 
+// TestLinkFindingsCounterpartOnlyInPeerSiblingWorktree pins the same
+// fallback for the sibling layout flow creates worktrees in,
+// <repo>-worktrees/<id>/spectre (KAN-975): without it validate reads a
+// link whose counterpart lives there as one-sided.
+func TestLinkFindingsCounterpartOnlyInPeerSiblingWorktree(t *testing.T) {
+	parent := t.TempDir()
+	satBase := testtree.Build(t, parent, "sat", nil, "can ../can\n")
+	canBase := testtree.Build(t, parent, "can", nil, "sat ../sat\n") // can's own changes/ stays empty
+	testtree.Change(t, satBase, "x", false, map[string]string{"link.md": satLinkMD("b", "1")})
+	testtree.Change(t, filepath.Join(canBase+"-worktrees", "x"), "x", false, map[string]string{
+		"link.md":     canLinkMD("b", goodMergeOrder),
+		"proposal.md": goodProposal,
+		"tasks.md":    oneTaskTasksFile,
+	})
+
+	sat, err := tree.Open(satBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := findings(t, sat); len(got) != 0 {
+		t.Errorf("want a clean round trip against a peer sibling worktree, got:\n%s", findingMsgs(got))
+	}
+}
+
 // TestStructuralLinkPlusDesignKeepsDesignChecks pins that "nothing else"
 // in the satellite definition (design.md's pointer-tree-not-full-tree)
 // includes design.md: a change directory carrying link.md and a design.md

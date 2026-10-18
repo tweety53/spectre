@@ -145,6 +145,35 @@ func TestLinkCounterpartOnlyInPeerWorktree(t *testing.T) {
 	}
 }
 
+// TestLinkCounterpartOnlyInPeerSiblingWorktree pins the same fallback for
+// the sibling layout flow creates worktrees in,
+// <repo>-worktrees/<id>/spectre (KAN-975).
+func TestLinkCounterpartOnlyInPeerSiblingWorktree(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+	satBase, canBase := linkFixture(t, "kan-9-cross", "feature-cross", nil)
+	wt := filepath.Join(canBase+"-worktrees", "kan-9-cross")
+	wtChanges := filepath.Join(wt, "spectre", "changes", "kan-9-cross")
+	// A real git worktree carrying the change, then the change removed
+	// from the primary checkout, so the worktree is the only place it lives.
+	if out, err := exec.Command("git", "-C", canBase, "worktree", "add", "-q", "-b", "kan-9-cross", wt).CombinedOutput(); err != nil {
+		t.Fatalf("git worktree add: %v (%s)", err, out)
+	}
+	if err := os.RemoveAll(filepath.Join(canBase, "spectre", "changes", "kan-9-cross")); err != nil {
+		t.Fatal(err)
+	}
+	commitAll(t, canBase)
+
+	var out, errBuf bytes.Buffer
+	if code := Link([]string{"--root", satBase, "can:kan-9-cross"}, &out, &errBuf); code != OK {
+		t.Fatalf("exit = %d, stderr = %s", code, errBuf.String())
+	}
+	if _, err := os.ReadFile(filepath.Join(wtChanges, "link.md")); err != nil {
+		t.Fatalf("canonical link.md not written into the peer sibling worktree: %v", err)
+	}
+}
+
 func TestLink(t *testing.T) {
 	satBase, canBase := linkFixture(t, "kan-9-cross", "feature-cross", nil)
 

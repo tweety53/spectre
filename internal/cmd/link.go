@@ -78,7 +78,7 @@ func Link(args []string, stdout, stderr io.Writer) int {
 		return Usage
 	}
 	// The counterpart may exist only in the peer repository's own worktree
-	// (<repo>/.worktrees/<id>/spectre): before either side of a cross-repo
+	// (tree.CounterpartWorktree's layouts): before either side of a cross-repo
 	// link has landed on a primary checkout, that worktree is the only
 	// place the canonical change exists — the same fallback
 	// check.resolveCounterpart applies on the validate side. When it
