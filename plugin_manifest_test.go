@@ -236,3 +236,20 @@ func TestPluginManifestsAgree(t *testing.T) {
 		}
 	})
 }
+
+// TestPluginShipsSpectrePlanning pins the tool + planning prompts mode: the
+// plugin carries the spectre-planning skill vendored from the agents
+// repository, with the UPSTREAM.md that names its source commit.
+func TestPluginShipsSpectrePlanning(t *testing.T) {
+	dir := filepath.Join(repoRoot(t), ".claude", "skills", "spectre-planning")
+	skill, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
+	if err != nil {
+		t.Fatalf("reading spectre-planning/SKILL.md: %v", err)
+	}
+	if !regexp.MustCompile(`(?m)\A---\nname: spectre-planning\n`).Match(skill) {
+		t.Errorf("spectre-planning/SKILL.md's frontmatter does not open with name: spectre-planning")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "UPSTREAM.md")); err != nil {
+		t.Errorf("spectre-planning carries no UPSTREAM.md: %v", err)
+	}
+}
