@@ -7,7 +7,7 @@ disk is the entire state.
 
 - Binary: `go install github.com/tweety53/spectre/cmd/spectre@latest`, or build locally with
   `go build -o bin/spectre ./cmd/spectre`.
-- The skills — `spectre`, plus the bundled `brainstorming` and `writing-plans` — install
+- The skills — `spectre`, plus the bundled `brainstorming`, `writing-plans` and `spectre-planning` — install
   separately from the binary. In **Claude Code**, this repository is its own plugin
   marketplace:
 
@@ -24,12 +24,23 @@ disk is the entire state.
   ```bash
   git clone https://github.com/tweety53/spectre /tmp/spectre
   mkdir -p ~/.claude/skills
-  cp -r /tmp/spectre/.claude/skills/spectre /tmp/spectre/.claude/skills/brainstorming /tmp/spectre/.claude/skills/writing-plans ~/.claude/skills/
+  cp -r /tmp/spectre/.claude/skills/spectre /tmp/spectre/.claude/skills/brainstorming /tmp/spectre/.claude/skills/writing-plans /tmp/spectre/.claude/skills/spectre-planning ~/.claude/skills/
   ```
 
 - The `spectre` skill dispatches to the binary, so `spectre` must be on `PATH`. Inside a checkout of
   this repository no install is needed — Claude Code reads [.claude/skills/](.claude/skills/)
   directly, as `/spectre` — as does a manual copy.
+
+## Two modes
+
+- **Tool only** — `go install` the binary and nothing else. spectre checks the shape of a change;
+  how you plan it is up to you.
+- **Tool + planning prompts** — install the plugin (above), or copy `.claude/skills/spectre-planning/`
+  beside the binary's skills. The `spectre-planning` skill adds the planning prompts: plan mode,
+  Explore and Plan agents, the four `design.md` plan sections, the design approval gate and the
+  plan-writing rules that hold without flow. On **Cursor**, also copy `.cursor/rules/`: its `spectre-planning` rule
+  points Cursor at the skill and switches to Plan mode first. No CLI flag picks the mode — what is
+  installed does.
 
 ## Bundled: brainstorming and writing-plans
 
@@ -42,6 +53,9 @@ nothing else to install:
 - `writing-plans` turns them into a test-first `tasks.md` — files, tests, verify commands and
   commits per task, steps indented under spectre's column-0 tasks.
 - The `spectre` skill's `new` runs both.
+- `spectre-planning` is the planning prompts mode's skill (**Two modes**, above), vendored
+  unmodified from [agents](https://github.com/tweety53/agents); its `UPSTREAM.md` names the source
+  commit.
 - They are unmodified superpowers v6.4.2, MIT, © Jesse Vincent; each directory's `UPSTREAM.md`
   names the source commit. A separately installed superpowers works the same.
 - Installed, they are ordinary skills available in every project, not only inside `spectre new`;

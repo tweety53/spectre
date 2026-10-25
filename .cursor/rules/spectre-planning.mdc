@@ -1,0 +1,7 @@
+---
+description: Planning a spectre change — brainstorm the design, fill proposal.md, design.md and tasks.md, write the plan
+alwaysApply: false
+---
+
+When planning a spectre change, switch to Plan mode first — or ask the user to switch when you
+cannot — then read `.claude/skills/spectre-planning/SKILL.md` and follow it.
