@@ -239,7 +239,7 @@ func TestPluginManifestsAgree(t *testing.T) {
 
 // TestPluginShipsSpectrePlanning pins the tool + planning prompts mode: the
 // plugin carries the spectre-planning skill vendored from the agents
-// repository, with the UPSTREAM.md that names its source commit.
+// repository, with the UPSTREAM.md that names its source path on agents main.
 func TestPluginShipsSpectrePlanning(t *testing.T) {
 	dir := filepath.Join(repoRoot(t), ".claude", "skills", "spectre-planning")
 	skill, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
