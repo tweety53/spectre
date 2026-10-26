@@ -33,14 +33,17 @@ disk is the entire state.
 
 ## Two modes
 
+- **Tool + planning prompts** *(recommended)* — install the plugin (above), or copy
+  `.claude/skills/spectre-planning/` beside the binary's skills. The `spectre-planning` skill adds
+  the planning prompts: plan mode, Explore and Plan agents, the four `design.md` plan sections, the
+  design approval gate and the plan-writing rules that hold without flow. It runs the bundled
+  `brainstorming` and `writing-plans` skills, so nothing beyond spectre needs installing. On
+  **Cursor**, also copy `.cursor/rules/`: its `spectre-planning` rule points Cursor at the skill and
+  switches to Plan mode first.
 - **Tool only** — `go install` the binary and nothing else. spectre checks the shape of a change;
   how you plan it is up to you.
-- **Tool + planning prompts** — install the plugin (above), or copy `.claude/skills/spectre-planning/`
-  beside the binary's skills. The `spectre-planning` skill adds the planning prompts: plan mode,
-  Explore and Plan agents, the four `design.md` plan sections, the design approval gate and the
-  plan-writing rules that hold without flow. On **Cursor**, also copy `.cursor/rules/`: its `spectre-planning` rule
-  points Cursor at the skill and switches to Plan mode first. No CLI flag picks the mode — what is
-  installed does.
+
+No CLI flag picks the mode — what is installed does.
 
 ## Bundled: brainstorming and writing-plans
 
