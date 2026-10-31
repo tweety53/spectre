@@ -163,8 +163,8 @@ func linkRow(t *tree.Tree, peers map[string]tree.ResolvedPeer, c model.Change) c
 }
 
 // linkProgress resolves ref's canonical task progress: rp must be declared
-// and PeerFound, and the counterpart change (searched changes/<id> then
-// changes/archive/<id>, independent-archive) must exist and read cleanly.
+// and PeerFound, and the counterpart change at changes/<id> must exist
+// and read cleanly.
 // Any other outcome returns ok == false — peer-absence-is-not-a-finding
 // applies to list the same as it does to validate, so no case here is an
 // error, only "not known".
@@ -174,9 +174,6 @@ func linkProgress(peers map[string]tree.ResolvedPeer, ref model.LinkRef) (done, 
 		return 0, 0, false
 	}
 	dir := filepath.Join(rp.Tree.ChangesDir(), ref.ChangeID)
-	if !fileExists(filepath.Join(dir, tree.TasksFile)) {
-		dir = filepath.Join(rp.Tree.ArchiveDir(), ref.ChangeID)
-	}
 	tasks, err := parse.New(rp.Tree.Cfg).TasksFile(filepath.Join(dir, tree.TasksFile))
 	if err != nil {
 		return 0, 0, false

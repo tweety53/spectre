@@ -23,7 +23,6 @@ func seed(t *testing.T) *Tree {
 	write("specs/plans.md", "# plans\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL c.\n")
 	write("changes/kan-2-second/tasks.md", "# Tasks\n\n- [x] 1. One\n- [ ] 2. Two\n")
 	write("changes/kan-1-first/tasks.md", "# Tasks\n\n- [x] 1. One\n")
-	write("changes/archive/kan-0-old/tasks.md", "# Tasks\n\n- [x] 1. Done\n")
 	tr, err := Find(base)
 	if err != nil {
 		t.Fatal(err)
@@ -75,19 +74,5 @@ func TestChangesOpen(t *testing.T) {
 	}
 	if open[1].DoneCount() != 1 || len(open[1].Tasks) != 2 {
 		t.Errorf("kan-2 progress = %d/%d", open[1].DoneCount(), len(open[1].Tasks))
-	}
-	if open[0].Archived {
-		t.Error("open change marked archived")
-	}
-}
-
-func TestChangesArchived(t *testing.T) {
-	tr := seed(t)
-	arch, err := tr.changes(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(arch) != 1 || arch[0].ID != "kan-0-old" || !arch[0].Archived {
-		t.Errorf("archived = %+v", arch)
 	}
 }

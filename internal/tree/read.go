@@ -49,18 +49,7 @@ func (t *Tree) Spec(capability string) (model.Spec, error) {
 
 // Changes reads open change folders under changes/, sorted by id.
 func (t *Tree) Changes() ([]model.Change, error) {
-	return t.changes(false)
-}
-
-// changes reads change folders, sorted by id. archived selects
-// changes/archive/ instead of changes/. Unexported: nothing outside the
-// package needs archived changes today, so there is no public
-// ArchivedChanges wrapper — add one when a real caller needs it.
-func (t *Tree) changes(archived bool) ([]model.Change, error) {
 	dir := t.ChangesDir()
-	if archived {
-		dir = t.ArchiveDir()
-	}
 	ents, err := os.ReadDir(dir)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
@@ -70,10 +59,10 @@ func (t *Tree) changes(archived bool) ([]model.Change, error) {
 	}
 	var out []model.Change
 	for _, e := range ents {
-		if !e.IsDir() || (!archived && e.Name() == "archive") {
+		if !e.IsDir() {
 			continue
 		}
-		c := model.Change{ID: e.Name(), Dir: filepath.Join(dir, e.Name()), Archived: archived}
+		c := model.Change{ID: e.Name(), Dir: filepath.Join(dir, e.Name())}
 		tasks, err := t.p.TasksFile(filepath.Join(c.Dir, TasksFile))
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return nil, err

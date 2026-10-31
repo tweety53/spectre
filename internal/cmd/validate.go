@@ -36,8 +36,7 @@ func Validate(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	// Resolved unconditionally: ref checking only runs for a whole-tree
-	// validate (changeID == ""), but link checking (internal/check's
+	// Resolved unconditionally: link checking (internal/check's
 	// LinkFindings) consults peers for a single change too, and
 	// "spectre validate <change-id>" — the exact form /flow's implement
 	// step 1 runs — must not run every link check against a nil peer map,

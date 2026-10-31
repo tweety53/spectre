@@ -21,7 +21,6 @@ var RuleNames = []string{
 	"malformed-bullet",
 	"id-sequence",
 	"task-sequence",
-	"refs",
 }
 
 // Config is one tree's settings. The zero value is not valid — its rules

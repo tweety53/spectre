@@ -255,8 +255,7 @@ func TaskFindings(cfg config.Config, id, relPath string, raw []byte, ts []model.
 
 // Structural checks every spec and change in the tree, or one change when
 // changeID is non-empty. peers is this tree's declared peers, already
-// resolved (see tree.ResolvePeer). Ref checking (changeID == "" only)
-// consults it for every reference; link checking consults it too, for
+// resolved (see tree.ResolvePeer). Link checking consults it for
 // every change that carries a link.md, regardless of changeID — so a
 // caller that narrows to one linked change must still resolve and pass
 // peers, or its link findings will read every peer as not declared. A nil
@@ -271,10 +270,6 @@ func Structural(t *tree.Tree, changeID string, peers map[string]tree.ResolvedPee
 		}
 		for _, s := range specs {
 			out = append(out, SpecFindings(t.Cfg, rel(t, s.Path), s, s.Raw)...)
-		}
-
-		if t.Cfg.RuleOn("refs") {
-			out = append(out, RefFindings(t.Root, specs, peers)...)
 		}
 	}
 

@@ -112,9 +112,6 @@ func (t *Tree) SpecsDir() string { return filepath.Join(t.Root, t.Cfg.SpecsDir) 
 // ChangesDir is the tree's open-changes subdirectory.
 func (t *Tree) ChangesDir() string { return filepath.Join(t.Root, t.Cfg.ChangesDir) }
 
-// ArchiveDir is the tree's archived-changes subdirectory.
-func (t *Tree) ArchiveDir() string { return filepath.Join(t.ChangesDir(), "archive") }
-
 // isTree reports whether p is already a spectre tree directory rather than
 // the repository that contains one, by probing for changes/ inside it. A
 // peers entry names the repository, so Peers appends the tree leaf only

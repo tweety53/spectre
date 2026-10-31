@@ -103,12 +103,12 @@ func canonicalLink(peer, changeID string) string {
 func TestListSatellite(t *testing.T) {
 	parent := t.TempDir()
 	canBase := testtree.Build(t, parent, "can", nil, "sat ../sat")
-	testtree.Change(t, canBase, "kan-1-first", false, map[string]string{
+	testtree.Change(t, canBase, "kan-1-first", map[string]string{
 		"proposal.md": "# kan-1-first\n\n## Why\nBecause.\n\n## What changes\n- a thing\n",
 		"tasks.md":    canonicalTasks,
 	})
 	satBase := testtree.Build(t, parent, "sat", nil, "can ../can")
-	testtree.Change(t, satBase, "kan-1-first", false, map[string]string{
+	testtree.Change(t, satBase, "kan-1-first", map[string]string{
 		"link.md": satelliteLink("can", "kan-1-first"),
 	})
 
@@ -127,7 +127,7 @@ func TestListSatellitePeerAbsent(t *testing.T) {
 	// "can" is declared in peers but never built on disk, so it is
 	// PeerNotPresent, not PeerFound.
 	satBase := testtree.Build(t, parent, "sat", nil, "can ../can")
-	testtree.Change(t, satBase, "kan-1-first", false, map[string]string{
+	testtree.Change(t, satBase, "kan-1-first", map[string]string{
 		"link.md": satelliteLink("can", "kan-1-first"),
 	})
 
@@ -144,17 +144,17 @@ func TestListSatellitePeerAbsent(t *testing.T) {
 func TestListJSONLinks(t *testing.T) {
 	parent := t.TempDir()
 	canBase := testtree.Build(t, parent, "can", nil, "sat ../sat")
-	testtree.Change(t, canBase, "kan-1-first", false, map[string]string{
+	testtree.Change(t, canBase, "kan-1-first", map[string]string{
 		"proposal.md": "# kan-1-first\n\n## Why\nBecause.\n\n## What changes\n- a thing\n",
 		"tasks.md":    canonicalTasks,
 		"link.md":     canonicalLink("sat", "kan-1-first"),
 	})
-	testtree.Change(t, canBase, "kan-2-plain", false, map[string]string{
+	testtree.Change(t, canBase, "kan-2-plain", map[string]string{
 		"proposal.md": "# kan-2-plain\n\n## Why\nBecause.\n\n## What changes\n- a thing\n",
 		"tasks.md":    "# kan-2-plain\n\n- [ ] 1. One\n",
 	})
 	satBase := testtree.Build(t, parent, "sat", nil, "can ../can")
-	testtree.Change(t, satBase, "kan-1-first", false, map[string]string{
+	testtree.Change(t, satBase, "kan-1-first", map[string]string{
 		"link.md": satelliteLink("can", "kan-1-first"),
 	})
 
@@ -238,12 +238,12 @@ func TestListJSONLinks(t *testing.T) {
 func TestListMalformedLinkDegrades(t *testing.T) {
 	parent := t.TempDir()
 	base := testtree.Build(t, parent, "sat", nil, "")
-	testtree.Change(t, base, "kan-1-broken", false, map[string]string{
+	testtree.Change(t, base, "kan-1-broken", map[string]string{
 		// "## Part of" with a body line that isn't a single backtick-
 		// delimited span: LinkFile errors on this.
 		"link.md": "## Part of\nnot-a-code-span\n\n## Branch\nmain\n",
 	})
-	testtree.Change(t, base, "kan-2-other", false, map[string]string{
+	testtree.Change(t, base, "kan-2-other", map[string]string{
 		"proposal.md": "# kan-2-other\n\n## Why\nBecause.\n\n## What changes\n- a thing\n",
 		"tasks.md":    "# kan-2-other\n\n- [x] 1. One\n",
 	})
@@ -267,7 +267,7 @@ func TestListMalformedPeersDegrades(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(base, "spectre", "peers"), []byte("this is not name-and-path\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	testtree.Change(t, base, "kan-1-first", false, map[string]string{
+	testtree.Change(t, base, "kan-1-first", map[string]string{
 		"link.md": satelliteLink("can", "kan-1-first"),
 	})
 
@@ -289,7 +289,7 @@ func TestListJSONProgressUnknown(t *testing.T) {
 	parent := t.TempDir()
 	// "can" is declared but never built on disk: PeerNotPresent.
 	base := testtree.Build(t, parent, "sat", nil, "can ../can")
-	testtree.Change(t, base, "kan-1-first", false, map[string]string{
+	testtree.Change(t, base, "kan-1-first", map[string]string{
 		"link.md": satelliteLink("can", "kan-1-first"),
 	})
 

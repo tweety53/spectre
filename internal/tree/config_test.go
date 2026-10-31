@@ -21,7 +21,7 @@ func treeWithConfig(t *testing.T) string {
 		}
 	}
 	mk("config.md", "# spectre config\n\n## Vocabulary\n- id-prefix: REQ-\n\n## Layout\n- specs: docs/specs\n- changes: docs/changes\n- extension: .markdown\n")
-	mk("docs/specs/auth.markdown", "# auth\n\n## Purpose\nP.\n\n## Requirements\n- REQ-1: The system SHALL a.\n- REQ-2: The system SHALL b (@auth#REQ-1).\n")
+	mk("docs/specs/auth.markdown", "# auth\n\n## Purpose\nP.\n\n## Requirements\n- REQ-1: The system SHALL a.\n- REQ-2: The system SHALL b.\n")
 	mk("docs/changes/kan-1/tasks.md", "# Tasks\n\n- [x] 1. One\n")
 	return base
 }
@@ -64,9 +64,6 @@ func TestConfiguredIDPrefix(t *testing.T) {
 	}
 	if s.Reqs[0].ID != "REQ-1" || s.Reqs[0].Num != 1 {
 		t.Errorf("req 1 = %q/%d", s.Reqs[0].ID, s.Reqs[0].Num)
-	}
-	if len(s.Reqs[1].Refs) != 1 || s.Reqs[1].Refs[0].ID != "REQ-1" {
-		t.Errorf("refs = %+v", s.Reqs[1].Refs)
 	}
 }
 

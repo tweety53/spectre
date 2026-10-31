@@ -1,3 +1,7 @@
+// Package parse turns spectre markdown into the shared model. A Parser
+// carries the tree's configuration: a requirement bullet is anchored to
+// this tree's own configured id prefix, since it declares a new id in
+// this tree's vocabulary.
 package parse
 
 import (
@@ -11,8 +15,24 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/tweety53/spectre/internal/config"
 	"github.com/tweety53/spectre/internal/model"
 )
+
+// Parser reads spectre markdown under one tree's configuration.
+type Parser struct {
+	cfg   config.Config
+	reqRe *regexp.Regexp
+}
+
+// New builds a parser for cfg.
+func New(cfg config.Config) *Parser {
+	prefix := regexp.QuoteMeta(cfg.IDPrefix)
+	return &Parser{
+		cfg:   cfg,
+		reqRe: regexp.MustCompile(`^- (` + prefix + `(\d+)): (.*)$`),
+	}
+}
 
 // The five sections link.md recognises. Each may appear at most once; a
 // repeated heading is a parse error, the way peers already errors on a
@@ -26,9 +46,8 @@ const (
 )
 
 var (
-	// linkPeerNameRe is the same character rule spectre already applies to
-	// a peer name: internal/parse/ref.go's citation grammar accepts
-	// exactly this shape for the peer half of "(@peer:capability#id)".
+	// linkPeerNameRe is the peer-name class: a lowercase letter or digit,
+	// then lowercase letters, digits and hyphens.
 	linkPeerNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
 
 	// linkCodeSpanRe matches a line that is exactly one backtick-delimited

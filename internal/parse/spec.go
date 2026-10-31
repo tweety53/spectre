@@ -63,7 +63,6 @@ func (p *Parser) SpecFile(path string) (model.Spec, error) {
 					ID:   m[1],
 					Num:  num,
 					Text: m[3],
-					Refs: p.Refs(t, line),
 					Line: line,
 				})
 				continue

@@ -1,14 +1,11 @@
 package check
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/tweety53/spectre/internal/config"
 	"github.com/tweety53/spectre/internal/model"
-	"github.com/tweety53/spectre/internal/tree"
 )
 
 const noModalSpec = "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: the system does a thing.\n"
@@ -117,39 +114,5 @@ func TestIDSequenceRuleOff(t *testing.T) {
 	cfg = cfg.WithRule("id-sequence", false)
 	if got := msgs(SpecFindings(cfg, "specs/auth.md", s, raw)); got != "" {
 		t.Errorf("rule off should be silent, got:\n%s", got)
-	}
-}
-
-func TestRefsRuleOff(t *testing.T) {
-	base := t.TempDir()
-	root := filepath.Join(base, "spectre")
-	if err := os.MkdirAll(filepath.Join(root, "specs"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(filepath.Join(root, "changes"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	body := "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@auth#R9).\n"
-	if err := os.WriteFile(filepath.Join(root, "specs", "auth.md"), []byte(body), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	cfg := config.Default()
-	tr := tree.At(root, cfg)
-	got, err := Structural(tr, "", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(msgs(got), "no requirement R9") {
-		t.Fatalf("default config should flag the bad ref, got:\n%s", msgs(got))
-	}
-
-	tr = tree.At(root, cfg.WithRule("refs", false))
-	got, err = Structural(tr, "", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(msgs(got), "no requirement R9") {
-		t.Errorf("rule off should silence the ref finding, got:\n%s", msgs(got))
 	}
 }

@@ -38,18 +38,13 @@ func Build(t *testing.T, parent, name string, specs map[string]string, peers str
 	return base
 }
 
-// Change writes a change directory under base (as returned by Build): open,
-// at <base>/spectre/changes/<id>/, or — when archived is true — archived,
-// at <base>/spectre/changes/archive/<id>/. It writes one file per entry in
+// Change writes a change directory under base (as returned by Build), at
+// <base>/spectre/changes/<id>/. It writes one file per entry in
 // files, named by its key (e.g. "link.md", "proposal.md", "tasks.md"), and
 // returns the change directory's absolute path.
-func Change(t *testing.T, base, id string, archived bool, files map[string]string) string {
+func Change(t *testing.T, base, id string, files map[string]string) string {
 	t.Helper()
-	dir := filepath.Join(base, "spectre", "changes")
-	if archived {
-		dir = filepath.Join(dir, "archive")
-	}
-	dir = filepath.Join(dir, id)
+	dir := filepath.Join(base, "spectre", "changes", id)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
