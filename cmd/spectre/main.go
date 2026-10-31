@@ -17,7 +17,7 @@ commands:
   new <change-id>              scaffold changes/<id>/
   list [--specs] [--json]      list open changes, or capabilities
   validate [change-id]         check the tree, or one change
-  link [--force] <peer>:<id>   link this tree to a canonical change in a peer tree
+  link <peer>:<id>             link this tree to a canonical change in a peer tree
 
 every command accepts --root <path> to name the tree explicitly
 `

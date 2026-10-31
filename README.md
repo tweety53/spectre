@@ -134,7 +134,7 @@ allowed.
 | `spectre new <change-id>` | `--root` | scaffolds `changes/<id>/`; exits 1 if it already exists |
 | `spectre list` | `--root`, `--specs`, `--json` | open changes with `3/7` progress; `--specs` lists capabilities instead |
 | `spectre validate [change-id]` | `--root` | structural and link checks, whole tree or one change |
-| `spectre link <peer>:<canonical-id>` | `--root`, `--force` | links this tree to a canonical change in a peer tree |
+| `spectre link <peer>:<canonical-id>` | `--root` | links this tree to a canonical change in a peer tree |
 
 Exit codes, for every command: `0` success, `1` findings or a content refusal, `2` a usage or IO
 error.

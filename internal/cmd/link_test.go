@@ -11,8 +11,7 @@ import (
 )
 
 // commitAll commits everything currently in the git repo at dir, so a
-// fixture state created after gitInit reads as clean to
-// hasUncommittedModifications.
+// fixture state created after gitInit is part of the peer's history.
 func commitAll(t *testing.T, dir string) {
 	t.Helper()
 	for _, args := range [][]string{
@@ -293,20 +292,7 @@ func TestLinkRefuses(t *testing.T) {
 			wantSub: "already exists",
 		},
 		{
-			name: "peer change directory has uncommitted modifications",
-			setup: func(t *testing.T) (string, string) {
-				satBase, canBase := linkFixture(t, "kan-9-cross", "feature-cross", nil)
-				dirty := filepath.Join(canBase, "spectre", "changes", "kan-9-cross", "tasks.md")
-				body := "# kan-9-cross\n\n- [ ] 1. One\n- [ ] 2. Two\n"
-				if err := os.WriteFile(dirty, []byte(body), 0o644); err != nil {
-					t.Fatal(err)
-				}
-				return satBase, "can:kan-9-cross"
-			},
-			wantSub: "uncommitted modifications",
-		},
-		{
-			// Pins link.go's sixth, self-imposed refusal: writing a valid
+			// Pins link.go's fifth, self-imposed refusal: writing a valid
 			// "## Parts" entry into the peer's link.md requires a name the
 			// peer itself declares for this tree (tree.NamesFor against
 			// its own peers file). Erasing the peer's peers file removes
@@ -339,93 +325,20 @@ func TestLinkRefuses(t *testing.T) {
 	}
 }
 
-// TestLinkForce pins guarded-cross-tree-write's scope: --force overrides
-// the uncommitted-modifications refusal alone.
-func TestLinkForce(t *testing.T) {
-	t.Run("overrides uncommitted modifications", func(t *testing.T) {
-		satBase, canBase := linkFixture(t, "kan-9-cross", "feature-cross", nil)
-		dirty := filepath.Join(canBase, "spectre", "changes", "kan-9-cross", "tasks.md")
-		body := "# kan-9-cross\n\n- [ ] 1. One\n- [ ] 2. Two\n"
-		if err := os.WriteFile(dirty, []byte(body), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		var out, errBuf bytes.Buffer
-		if code := Link([]string{"--root", satBase, "--force", "can:kan-9-cross"}, &out, &errBuf); code != OK {
-			t.Fatalf("exit = %d, stderr = %s", code, errBuf.String())
-		}
-	})
-
-	t.Run("does not override peer not declared", func(t *testing.T) {
-		satBase, _ := linkFixture(t, "kan-9-cross", "feature-cross", nil)
-		var out, errBuf bytes.Buffer
-		if code := Link([]string{"--root", satBase, "--force", "nope:kan-9-cross"}, &out, &errBuf); code != Fail {
-			t.Fatalf("exit = %d, want %d (Fail); stderr=%s", code, Fail, errBuf.String())
-		}
-	})
-
-	t.Run("does not override canonical does not exist", func(t *testing.T) {
-		satBase, _ := linkFixture(t, "kan-9-cross", "feature-cross", nil)
-		var out, errBuf bytes.Buffer
-		if code := Link([]string{"--root", satBase, "--force", "can:kan-missing"}, &out, &errBuf); code != Fail {
-			t.Fatalf("exit = %d, want %d (Fail); stderr=%s", code, Fail, errBuf.String())
-		}
-	})
-
-	t.Run("does not override canonical is itself a satellite", func(t *testing.T) {
-		satBase, _ := linkFixture(t, "kan-9-cross", "feature-cross", map[string]string{
-			"link.md": "## Part of\n\n`other:some-id`\n\n## Branch\n\nfeature-cross\n",
-		})
-		var out, errBuf bytes.Buffer
-		if code := Link([]string{"--root", satBase, "--force", "can:kan-9-cross"}, &out, &errBuf); code != Fail {
-			t.Fatalf("exit = %d, want %d (Fail); stderr=%s", code, Fail, errBuf.String())
-		}
-	})
-
-	t.Run("does not override link already exists", func(t *testing.T) {
-		satBase, _ := linkFixture(t, "kan-9-cross", "feature-cross", nil)
-		var out, errBuf bytes.Buffer
-		if code := Link([]string{"--root", satBase, "can:kan-9-cross"}, &out, &errBuf); code != OK {
-			t.Fatalf("setup link failed: exit=%d stderr=%s", code, errBuf.String())
-		}
-		out.Reset()
-		errBuf.Reset()
-		if code := Link([]string{"--root", satBase, "--force", "can:kan-9-cross"}, &out, &errBuf); code != Fail {
-			t.Fatalf("exit = %d, want %d (Fail); stderr=%s", code, Fail, errBuf.String())
-		}
-	})
-
-	t.Run("does not override peer has no declared name", func(t *testing.T) {
-		satBase, canBase := linkFixture(t, "kan-9-cross", "feature-cross", nil)
-		peersPath := filepath.Join(canBase, "spectre", "peers")
-		if err := os.WriteFile(peersPath, []byte(""), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		var out, errBuf bytes.Buffer
-		if code := Link([]string{"--root", satBase, "--force", "can:kan-9-cross"}, &out, &errBuf); code != Fail {
-			t.Fatalf("exit = %d, want %d (Fail); stderr=%s", code, Fail, errBuf.String())
-		}
-	})
-
-	// guarded-cross-tree-write: --force overrides the uncommitted-
-	// modifications refusal alone. This pins that it does not also widen
-	// the local-directory-already-exists refusal added for F2/F7 — the
-	// same scope guarantee TestLinkRefuses's other subtests pin for the
-	// refusals that predate it.
-	t.Run("does not override local change directory already exists", func(t *testing.T) {
-		satBase, _ := linkFixture(t, "kan-9-cross", "feature-cross", nil)
-		localDir := filepath.Join(satBase, "spectre", "changes", "kan-9-cross")
-		if err := os.MkdirAll(localDir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		body := "# kan-9-cross\n\n## Why\nUnrelated.\n\n## What changes\n- something else\n"
-		if err := os.WriteFile(filepath.Join(localDir, "proposal.md"), []byte(body), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		var out, errBuf bytes.Buffer
-		if code := Link([]string{"--root", satBase, "--force", "can:kan-9-cross"}, &out, &errBuf); code != Fail {
-			t.Fatalf("exit = %d, want %d (Fail); stderr=%s", code, Fail, errBuf.String())
-		}
-	})
+// TestLinkAdmitsAnUncommittedPeerChangeDir pins that a peer change
+// directory carrying uncommitted edits links: the directory is gitignored,
+// so it is never clean, and no refusal keys on it.
+func TestLinkAdmitsAnUncommittedPeerChangeDir(t *testing.T) {
+	satBase, canBase := linkFixture(t, "kan-9-cross", "feature-cross", nil)
+	dirty := filepath.Join(canBase, "spectre", "changes", "kan-9-cross", "tasks.md")
+	body := "# kan-9-cross\n\n- [ ] 1. One\n- [ ] 2. Two\n"
+	if err := os.WriteFile(dirty, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out, errBuf bytes.Buffer
+	if code := Link([]string{"--root", satBase, "can:kan-9-cross"}, &out, &errBuf); code != OK {
+		t.Fatalf("exit = %d, stderr = %s", code, errBuf.String())
+	}
 }
 
 // TestLinkWriteOrder pins the peer-side-first ordering: when the local

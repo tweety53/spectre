@@ -91,7 +91,7 @@ For every change carrying `link.md`:
 ## `spectre link`
 
 ```
-spectre link [--root <path>] [--force] <peer>:<canonical-id>
+spectre link [--root <path>] <peer>:<canonical-id>
 ```
 
 Run in the satellite tree. One command writes both sides:
@@ -105,7 +105,7 @@ Run in the satellite tree. One command writes both sides:
   appends its peer. Reordering is a hand edit.
 - `## Tasks here` is never written; add it by hand.
 
-### The six refusals
+### The five refusals
 
 Each is exit 1 naming the failed check. A malformed invocation — missing argument, no `:`, invalid
 change id, unresolvable `--root` — is exit 2.
@@ -114,12 +114,8 @@ change id, unresolvable `--root` — is exit 2.
 2. the canonical change id does not exist in the peer tree;
 3. the canonical change is itself a satellite (it carries `## Part of`) — links are one level deep;
 4. this link already exists, on either side;
-5. the peer's own change directory has uncommitted modifications;
-6. the peer's `peers` file has no name for *this* tree — the new `## Parts` entry would be
+5. the peer's `peers` file has no name for *this* tree — the new `## Parts` entry would be
    unresolvable the moment it was written.
-
-`--force` overrides refusal 5 alone. Refusal 5 checks only the peer's change directory
-(`changes/<canonical-id>/`); uncommitted work elsewhere in the peer repository does not refuse.
 
 ## Worked example
 
