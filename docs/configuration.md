@@ -13,7 +13,6 @@ default below applies.
 - malformed-bullet: error
 - id-sequence: error
 - task-sequence: error
-- refs: error
 
 ## Vocabulary
 - modal: SHALL             # the verb a requirement bullet must carry
@@ -31,6 +30,5 @@ default below applies.
 - A key set twice — even within the same section — is an error naming both lines.
 - Headings and bullets inside fenced code blocks are ignored, so an example in a ` ``` ` fence
   never changes a setting.
-- Configuration is per tree: a peer's own `config.md` governs its files, so a `REQ-` tree can be
-  cited from an `R` tree.
+- Configuration is per tree: a peer's own `config.md` governs its files.
 - What `new` scaffolds is not configurable; it is compiled into the binary.

@@ -261,9 +261,8 @@ $ spectre list
 multi-channel-notifications  0/5
 ```
 
-## 5. Work and archive
+## 5. Work
 
-Work and archive the change exactly as in [example.md steps 8–9](example.md#8-work-the-tasks):
-implement each task, tick its column-0 box, commit, then `git add spectre` and `spectre archive
-multi-channel-notifications`. Step boxes are optional progress marks; only task boxes gate
-`archive`.
+Work the change exactly as in [example.md step 8](example.md#8-work-the-tasks): implement each
+task, tick its column-0 box, commit. Step boxes are optional progress marks; only task boxes count
+as progress.

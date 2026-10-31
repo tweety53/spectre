@@ -85,8 +85,8 @@ commands and real output is [docs/terminal.md](docs/terminal.md).
    [step 7](docs/example.md#7-validate-the-finished-change).
 5. Per task: implement it, run the project's build and tests, tick its box, commit. This loop, not
    any `spectre` command, is the bulk of a change — [step 8](docs/example.md#8-work-the-tasks).
-6. `git add spectre`, then `spectre archive <change-id>` —
-   [step 9](docs/example.md#9-archive-the-finished-change).
+6. Land the change's commits. The change directory itself is never committed: it stays on disk,
+   uncommitted, until the change is done.
 
 Every command searches upwards from the working directory for a directory literally named
 `spectre`; `--root <path>` names the tree instead. Go's `flag` package stops at the first
@@ -104,8 +104,9 @@ spectre/
              /tasks.md        # "- [ ] 1. ..." — the only progress signal
              /design.md       # context and decisions; validated when present
              /link.md         # a change spanning repositories; alone, marks a satellite
-  changes/archive/<id>/
 ```
+
+`spectre/changes/` is gitignored and lives on disk in the change's worktree.
 
 `new` scaffolds `proposal.md`, `tasks.md` and `design.md` under `changes/<id>/`.
 
@@ -132,33 +133,16 @@ allowed.
 | `spectre init` | `--root` | creates `specs/`, `changes/` and a `config.md` of commented defaults; fills in what's missing |
 | `spectre new <change-id>` | `--root` | scaffolds `changes/<id>/`; exits 1 if it already exists |
 | `spectre list` | `--root`, `--specs`, `--json` | open changes with `3/7` progress; `--specs` lists capabilities instead |
-| `spectre validate [change-id]` | `--root` | structural checks and reference resolution, whole tree or one change |
-| `spectre refs <capability>#<id>` | `--root` | every citation of a requirement, in this tree and each declared peer |
-| `spectre archive <change-id>` | `--root`, `--force` | `git mv`s a finished change into `changes/archive/` |
+| `spectre validate [change-id]` | `--root` | structural and link checks, whole tree or one change |
 | `spectre link <peer>:<canonical-id>` | `--root`, `--force` | links this tree to a canonical change in a peer tree |
 
 Exit codes, for every command: `0` success, `1` findings or a content refusal, `2` a usage or IO
 error.
 
-## `archive`
-
-`spectre archive <change-id>` `git mv`s a finished change into `changes/archive/` and does not
-commit.
-
-- The tree must be inside a git repository with the change's files tracked (`git add`); otherwise
-  `git mv`'s own error is prefixed with that requirement and the command exits 2 — an environment
-  problem, not a content refusal.
-- Content refusals, each overridable with `--force`: no `tasks.md`; `tasks.md` with no tasks;
-  one or more unchecked tasks.
-- The destination already existing under `changes/archive/` is refused and **not** overridden by
-  `--force`; resolve the collision by hand.
-
 ## Further reading
 
 - [Spec format](docs/spec-format.md) — how a capability spec is written and how requirement ids
   work.
-- [References across trees](docs/references.md) — the three citation forms and how `validate`
-  and `refs` use them.
 - [Links across repositories](docs/links.md) — a change spanning several trees, `spectre link`'s
   guarded two-sided write, and what `validate` checks and deliberately does not.
 - [Per-repository configuration](docs/configuration.md) — what `spectre/config.md` can override,
@@ -166,6 +150,6 @@ commit.
 
 ## What spectre does not do
 
-No delta specs, no merge-back at archive time: a change edits spec files directly and git computes
+No delta specs, no merge-back: a change edits spec files directly and git computes
 the diff. No status field, assignee or timestamps. No network access, daemon or cache. Anything not
 derivable from the markdown does not exist.

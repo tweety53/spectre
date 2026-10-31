@@ -2,8 +2,7 @@
 
 How `link.md` records a change spanning several repositories' spectre trees, what `spectre link`
 writes, and what `validate` checks. A link is `peers` one level down: `peers` declares a neighbour
-tree; a link declares that *this change* is part of a specific change there. `peers` and citations:
-[references across trees](references.md).
+tree; a link declares that *this change* is part of a specific change there.
 
 ## Satellite and canonical
 
@@ -38,8 +37,7 @@ repeated heading is a parse error naming both lines, as in `peers`. A file is on
 
 - One `` `<peer>:<change-id>` `` span per line, at least one line; per-line grammar as `## Part of`.
   An empty section is rejected.
-- `<peer>` (both sections): non-empty, in the citation peer class (`internal/parse/ref.go`)
-  `[a-z0-9][a-z0-9-]*`. `Agents`, `agents_repo` and a bare `:` after the peer are rejected.
+- `<peer>` (both sections): non-empty, in the peer-name class `[a-z0-9][a-z0-9-]*`. `Agents`, `agents_repo` and a bare `:` after the peer are rejected.
 - `<change-id>`: non-empty, not `.` or `..`, no `/` or `\`, not absolute, `filepath.Clean`-equal to
   itself, no control characters.
 
@@ -69,11 +67,8 @@ repeated heading is a parse error naming both lines, as in `peers`. A file is on
 For every change carrying `link.md`:
 
 - the peer named by `## Part of` or each `## Parts` entry must be **declared** in `peers`;
-- for a declared, **present** peer, the counterpart must exist (`changes/<id>/`, then
-  `changes/archive/<id>/`) and its `link.md` must name this change back — a one-sided link is a
-  finding naming both sides;
-- **archive skew** — one side archived, the other not — is a finding naming the archived side,
-  never a refusal: a link outlives either side's archive timing;
+- for a declared, **present** peer, the counterpart must exist (`changes/<id>/`) and its `link.md` must
+  name this change back — a one-sided link is a finding naming both sides;
 - both sides' `## Branch` must be byte-identical once the counterpart resolves; a mismatch quotes
   both;
 - satellite: every `## Tasks here` number must match a task in the canonical `tasks.md`; each
@@ -89,7 +84,7 @@ For every change carrying `link.md`:
 - A peer **declared but not present** is reported as not checked, never a finding. `peers` paths
   are relative to the tree's parent (`agents ../agents`), and a `/flow` worktree cannot see the
   other repository's sibling worktree there; a finding would fire on every worktree of every
-  linked change. `refs` treats an unresolved peer citation the same way.
+  linked change.
 - A peer declared and **unreadable** — the path exists but the tree or its specs cannot be read —
   IS a finding: a broken peer, not the ordinary worktree case.
 
