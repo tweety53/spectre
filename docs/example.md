@@ -287,18 +287,5 @@ Per task: write the code, then check its box:
 ```
 
 - `validate` ignores box state; a task-sequence finding fires only on a missing, duplicate or
-  malformed task number. The box exists for `archive`.
+  malformed task number. The box is what `list` counts as progress.
 - This loop, not any `spectre` command, is the bulk of a real change.
-
-## 9. Archive the finished change
-
-Paste this into an AI coding agent:
-
-> Stage the change with `git add spectre`, then run `spectre archive multi-channel-notifications`.
-> If it refuses because a task is unchecked, go back and check the remaining boxes in `tasks.md`,
-> then run `archive` again.
-
-- `archive` uses `git mv`, so the change's files must be tracked — hence the `git add`.
-- It refuses while any task is unchecked.
-- The change moves to `spectre/changes/archive/multi-channel-notifications/`, staged, not
-  committed — committing is the last step.

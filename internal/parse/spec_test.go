@@ -59,39 +59,6 @@ Sessions and tokens.
 		t.Errorf("r1 line = %d, want 7", r1.Line)
 	}
 
-	r2 := got.Reqs[1]
-	if len(r2.Refs) != 1 {
-		t.Fatalf("len(r2.Refs) = %d, want 1", len(r2.Refs))
-	}
-	ref := r2.Refs[0]
-	if ref.Peer != "web" || ref.Capability != "plans" || ref.ID != "R7" {
-		t.Errorf("ref = %+v", ref)
-	}
-	if ref.Raw != "@web:plans#R7" {
-		t.Errorf("ref.Raw = %q", ref.Raw)
-	}
-}
-
-func TestRefsScopes(t *testing.T) {
-	parser := New(config.Default())
-	refs := parser.Refs("- R3: See (@R1) and (@plans#R2) and (@web:plans#R4)", 12)
-	if len(refs) != 3 {
-		t.Fatalf("len = %d, want 3", len(refs))
-	}
-	if refs[0].Peer != "" || refs[0].Capability != "" || refs[0].ID != "R1" {
-		t.Errorf("same-file ref = %+v", refs[0])
-	}
-	if refs[1].Peer != "" || refs[1].Capability != "plans" || refs[1].ID != "R2" {
-		t.Errorf("same-tree ref = %+v", refs[1])
-	}
-	if refs[2].Peer != "web" || refs[2].Capability != "plans" || refs[2].ID != "R4" {
-		t.Errorf("cross-tree ref = %+v", refs[2])
-	}
-	for _, r := range refs {
-		if r.Line != 12 {
-			t.Errorf("ref line = %d, want 12", r.Line)
-		}
-	}
 }
 
 // TestSpecFileSkipsFencedRequirements pins the final-review fix: a

@@ -66,8 +66,11 @@ func TestValidateReportsUnreadablePeer(t *testing.T) {
 	}
 	parent := t.TempDir()
 	app := testtree.Build(t, parent, "app", map[string]string{
-		"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a (@web:billing#R1).\n",
+		"auth": "# auth\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL a.\n",
 	}, "web ../web\n")
+	testtree.Change(t, app, "kan-1", map[string]string{
+		"link.md": "## Part of\n\n`web:kan-1`\n\n## Branch\n\nb\n",
+	})
 	web := testtree.Build(t, parent, "web", map[string]string{
 		"billing": "# billing\n\n## Purpose\nP.\n\n## Requirements\n- R1: The system SHALL d.\n",
 	}, "")

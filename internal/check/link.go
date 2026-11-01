@@ -18,10 +18,7 @@ const LinkFile = "link.md"
 // IsSatellite reports whether dir is a pointer tree: it holds link.md and
 // nothing else (design.md's pointer-tree-not-full-tree). "Nothing else"
 // means design.md too — a directory that also carries one keeps every
-// check a full scaffold gets, same as proposal.md and tasks.md. It is
-// exported so archive reads the same definition Structural does, rather
-// than a copy that would drift the way it already has once, when review
-// widened "and nothing else" to include design.md.
+// check a full scaffold gets, same as proposal.md and tasks.md.
 func IsSatellite(dir string) bool {
 	return fileExists(filepath.Join(dir, LinkFile)) &&
 		!fileExists(filepath.Join(dir, tree.ProposalFile)) &&
@@ -30,7 +27,7 @@ func IsSatellite(dir string) bool {
 }
 
 // LinkFindings checks change c's parsed link.md (link) against peers, per
-// design.md's pointer-tree-not-full-tree, independent-archive and
+// design.md's pointer-tree-not-full-tree and
 // peer-absence-is-not-a-finding decisions:
 //
 //   - a peer named by "## Part of" or a "## Parts" entry must be declared
@@ -41,10 +38,8 @@ func IsSatellite(dir string) bool {
 //     tree, or whose specs cannot be read, is a finding — that peer is
 //     there and broken, not merely absent);
 //   - a peer that is declared and present must resolve a counterpart
-//     change (searched in changes/<id>/ then changes/archive/<id>/) whose
-//     own link.md names this change back — a one-sided link is a finding;
-//   - a counterpart resolved under changes/archive/ while this side is
-//     open is an archive-skew finding, never a refusal;
+//     change at changes/<id>/ whose own link.md names this change back —
+//     a one-sided link is a finding;
 //   - once the counterpart resolves and names back, both sides' "##
 //     Branch" must agree, and — on the satellite side — every "## Tasks
 //     here" number must match a task in the canonical's tasks.md;
@@ -82,8 +77,7 @@ func linkRefFindings(t *tree.Tree, c model.Change, relPath string, ref model.Lin
 	if rp.Resolution == tree.PeerUnreadable {
 		// unreadable-peer-is-a-finding narrows peer-absence-is-not-a-
 		// finding: a peer tree that is there and broken is not the
-		// ordinary absent-worktree case, so it is reported, the same way
-		// RefFindings already reports it for a citation.
+		// ordinary absent-worktree case, so it is reported.
 		return []Finding{{File: relPath, Line: 1, Msg: fmt.Sprintf(
 			"peer %q could not be read at %s: %v", ref.Peer, rp.Path, rp.Err)}}
 	}
@@ -93,7 +87,7 @@ func linkRefFindings(t *tree.Tree, c model.Change, relPath string, ref model.Lin
 		return nil
 	}
 
-	dir, archived, found := resolveCounterpart(rp.Tree, ref.ChangeID)
+	dir, found := resolveCounterpart(rp.Tree, ref.ChangeID)
 	var cLink model.Link
 	reciprocal := false
 	if found {
@@ -110,10 +104,6 @@ func linkRefFindings(t *tree.Tree, c model.Change, relPath string, ref model.Lin
 	}
 
 	var out []Finding
-	if archived {
-		out = append(out, Finding{File: relPath, Line: 1, Msg: fmt.Sprintf(
-			"archive skew: %s:%s is archived, %s is not", ref.Peer, ref.ChangeID, c.ID)})
-	}
 	if link.Branch != cLink.Branch {
 		out = append(out, Finding{File: relPath, Line: 1, Msg: fmt.Sprintf(
 			"branch mismatch: %q here, %q in %s:%s", link.Branch, cLink.Branch, ref.Peer, ref.ChangeID)})
@@ -137,8 +127,7 @@ func linkRefFindings(t *tree.Tree, c model.Change, relPath string, ref model.Lin
 }
 
 // resolveCounterpart locates a change directory in peer tree p, searching
-// changes/<id>/ before changes/archive/<id>/ (independent-archive), then —
-// when neither exists — a worktree of p's own repository named after id,
+// changes/<id>/, then — when it does not exist — a worktree of p's own repository named after id,
 // via tree.CounterpartWorktree. Peers() always resolves a peer name to the
 // repository's primary checkout, regardless of which worktree issued the
 // lookup, so p is never itself a worktree tree; before either side of a
@@ -146,29 +135,25 @@ func linkRefFindings(t *tree.Tree, c model.Change, relPath string, ref model.Lin
 // only place the counterpart exists at all, and without this fallback it
 // reads as one-sided on both sides for as long as the change lives only in
 // worktrees.
-func resolveCounterpart(p *tree.Tree, id string) (dir string, archived, found bool) {
-	if dir, archived, found := resolveCounterpartInTree(p, id); found {
-		return dir, archived, found
+func resolveCounterpart(p *tree.Tree, id string) (dir string, found bool) {
+	if dir, found := resolveCounterpartInTree(p, id); found {
+		return dir, found
 	}
 	wt, ok := tree.CounterpartWorktree(p, id)
 	if !ok {
-		return "", false, false
+		return "", false
 	}
 	return resolveCounterpartInTree(wt, id)
 }
 
 // resolveCounterpartInTree is resolveCounterpart's search of one tree,
 // shared between the peer's primary checkout and its worktree fallback.
-func resolveCounterpartInTree(p *tree.Tree, id string) (dir string, archived, found bool) {
+func resolveCounterpartInTree(p *tree.Tree, id string) (dir string, found bool) {
 	open := filepath.Join(p.ChangesDir(), id)
 	if fi, err := os.Stat(open); err == nil && fi.IsDir() {
-		return open, false, true
+		return open, true
 	}
-	arch := filepath.Join(p.ArchiveDir(), id)
-	if fi, err := os.Stat(arch); err == nil && fi.IsDir() {
-		return arch, true, true
-	}
-	return "", false, false
+	return "", false
 }
 
 // namesBack reports whether cLink — the counterpart's own parsed link.md,

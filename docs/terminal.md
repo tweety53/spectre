@@ -68,34 +68,5 @@ Per task: implement it, run the project's build and tests, tick its box, commit.
 +- [x] 1. Add a channel abstraction behind the existing email sender
 ```
 
-`validate` ignores box state ([example.md step 8](example.md#8-work-the-tasks)); the box exists for
-`archive`.
-
-## 9. Archive the finished change
-
-`archive` refuses while any task is unchecked, and needs the change's files `git add`ed for its
-`git mv`. Both refusals, hit in order:
-
-```
-$ spectre archive multi-channel-notifications
-multi-channel-notifications: 5 of 5 tasks are unchecked (use --force to archive anyway)
-```
-
-Exit code 1. After checking every task's box:
-
-```
-$ spectre archive multi-channel-notifications
-archive requires the tree to be inside a git repository with multi-channel-notifications's files already tracked (git add); git mv failed: exit status 128
-fatal: source directory is empty, source=spectre/changes/multi-channel-notifications, destination=spectre/changes/archive/multi-channel-notifications
-```
-
-Exit code 2. Once the files are staged, `archive` succeeds:
-
-```
-$ git add spectre
-$ spectre archive multi-channel-notifications
-archived multi-channel-notifications
-```
-
-Exit code 0. The change moves to `spectre/changes/archive/multi-channel-notifications/`, staged,
-not committed — committing is the last step.
+`validate` ignores box state ([example.md step 8](example.md#8-work-the-tasks)); the box is what
+`list` counts as progress.

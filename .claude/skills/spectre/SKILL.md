@@ -1,6 +1,6 @@
 ---
 name: spectre
-description: Dispatch to any spectre subcommand — init, new, list, validate, refs, archive, link —
+description: Dispatch to any spectre subcommand — init, new, list, validate, link —
   show its real output, name what typically comes next, and for `new`, fill in the three files it
   scaffolds, through the bundled brainstorming and writing-plans skills.
 allowed-tools: Bash(spectre:*), Read, Edit, Write, Skill
@@ -22,15 +22,12 @@ typically comes next, and **do not take that next step unasked**. `new` is the o
 ## Workflow
 
 1. Take the subcommand and arguments from the invocation verbatim — no remapping, no added flags.
-   One exception: `archive` without a change id. Run `spectre list --json` (with `--root` if
-   supplied) and read its `changes[].id`: exactly one open change — use that id; none or several
-   — show the ids and ask which one.
 2. Run `spectre <subcommand> <args>` (`--root <path>` only if the user supplied one; it must come
    before any positional change id).
 3. Print the real stdout/stderr and the exit code.
 4. Suggest the likely next step from the exit code and subcommand — e.g. after `init`, `new
-   <change-id>`; after `validate` with findings, fix them before archiving; after a clean
-   `validate`, the change is ready to work or archive.
+   <change-id>`; after `validate` with findings, fix them; after a clean
+   `validate`, the change is ready to work.
 
 ### `new` — the one exception
 
@@ -61,12 +58,11 @@ Only `new` invokes the bundled skills; every other subcommand stays dispatch-onl
 
 ## Guardrails
 
-- Never run a subcommand the user didn't ask for — save the `spectre list --json` lookup above.
+- Never run a subcommand the user didn't ask for.
 - Never invent output — only what the binary printed.
 - Never invent a subcommand, flag or behaviour; if unsure, run `spectre --help` or `spectre
   <subcommand> --help` and show that.
-- Never commit, stage or `git mv` for the user — `spectre archive` needs the change's files
-  already `git add`ed; suggesting that is as far as this skill goes.
+- Never commit, stage or `git mv` for the user.
 - For `new`: never remove or reorder the headings the scaffold wrote.
 - For `new`: never run `spectre validate`, `git add` or any other follow-on command unasked.
 

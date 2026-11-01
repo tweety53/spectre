@@ -13,19 +13,18 @@ import (
 // linkedTrees builds two peer trees, "sat" and "can", each declaring the
 // other under the name the peer half of a link.md reference uses, so a
 // link written between them resolves both ways. satFiles and canFiles are
-// the files (by name) to write into changes/x/ (or changes/archive/x/,
-// per satArchived/canArchived) in each tree; a nil map skips that
+// the files (by name) to write into changes/x/ in each tree; a nil map skips that
 // change's directory entirely, reproducing "no counterpart at all".
-func linkedTrees(t *testing.T, satFiles, canFiles map[string]string, satArchived, canArchived bool) (sat, can *tree.Tree) {
+func linkedTrees(t *testing.T, satFiles, canFiles map[string]string) (sat, can *tree.Tree) {
 	t.Helper()
 	parent := t.TempDir()
 	satBase := testtree.Build(t, parent, "sat", nil, "can ../can\n")
 	canBase := testtree.Build(t, parent, "can", nil, "sat ../sat\n")
 	if satFiles != nil {
-		testtree.Change(t, satBase, "x", satArchived, satFiles)
+		testtree.Change(t, satBase, "x", satFiles)
 	}
 	if canFiles != nil {
-		testtree.Change(t, canBase, "x", canArchived, canFiles)
+		testtree.Change(t, canBase, "x", canFiles)
 	}
 	var err error
 	sat, err = tree.Open(satBase)
@@ -83,13 +82,11 @@ const goodMergeOrder = "1. `sat`\n2. `.`\n"
 
 func TestLinkFindings(t *testing.T) {
 	cases := []struct {
-		name        string
-		satFiles    map[string]string
-		canFiles    map[string]string
-		satArchived bool
-		canArchived bool
-		side        string // "sat" or "can": which tree to run Structural over
-		want        string
+		name     string
+		satFiles map[string]string
+		canFiles map[string]string
+		side     string // "sat" or "can": which tree to run Structural over
+		want     string
 	}{
 		{
 			name:     "peer not declared",
@@ -110,14 +107,6 @@ func TestLinkFindings(t *testing.T) {
 			canFiles: map[string]string{"proposal.md": goodProposal, "tasks.md": oneTaskTasksFile},
 			side:     "sat",
 			want:     "one-sided link",
-		},
-		{
-			name:        "archive skew: canonical archived, satellite open",
-			satFiles:    map[string]string{"link.md": satLinkMD("b", "1")},
-			canFiles:    map[string]string{"link.md": canLinkMD("b", goodMergeOrder), "proposal.md": goodProposal, "tasks.md": oneTaskTasksFile},
-			canArchived: true,
-			side:        "sat",
-			want:        "archive skew",
 		},
 		{
 			name:     "merge order missing an entry",
@@ -159,14 +148,14 @@ func TestLinkFindings(t *testing.T) {
 			if tc.side == "sat-no-peers" {
 				parent := t.TempDir()
 				satBase := testtree.Build(t, parent, "sat", nil, "")
-				testtree.Change(t, satBase, "x", false, tc.satFiles)
+				testtree.Change(t, satBase, "x", tc.satFiles)
 				var err error
 				sat, err = tree.Open(satBase)
 				if err != nil {
 					t.Fatal(err)
 				}
 			} else {
-				sat, can = linkedTrees(t, tc.satFiles, tc.canFiles, tc.satArchived, tc.canArchived)
+				sat, can = linkedTrees(t, tc.satFiles, tc.canFiles)
 			}
 
 			var got []Finding
@@ -190,7 +179,7 @@ func TestLinkFindingsQuiet(t *testing.T) {
 	t.Run("peer declared but absent", func(t *testing.T) {
 		parent := t.TempDir()
 		satBase := testtree.Build(t, parent, "sat", nil, "can ../can\n") // "can" never built
-		testtree.Change(t, satBase, "x", false, map[string]string{"link.md": satLinkMD("b", "1")})
+		testtree.Change(t, satBase, "x", map[string]string{"link.md": satLinkMD("b", "1")})
 		sat, err := tree.Open(satBase)
 		if err != nil {
 			t.Fatal(err)
@@ -206,7 +195,7 @@ func TestLinkFindingsQuiet(t *testing.T) {
 	t.Run("merge order names a declared peer that is not a part", func(t *testing.T) {
 		parent := t.TempDir()
 		base := testtree.Build(t, parent, "be", nil, "fe ../fe\n") // "fe" never built
-		testtree.Change(t, base, "x", false, map[string]string{
+		testtree.Change(t, base, "x", map[string]string{
 			"link.md":     "## Merge order\n\n1. `.`\n2. `fe`\n",
 			"proposal.md": goodProposal,
 			"tasks.md":    oneTaskTasksFile,
@@ -220,51 +209,10 @@ func TestLinkFindingsQuiet(t *testing.T) {
 		}
 	})
 
-	// "canonical archived with the part archived too" is quiet for a
-	// reason outside LinkFindings' own logic: tree.Changes() (read.go)
-	// reads only changes/, never changes/archive/, so once a change is
-	// archived Structural never visits it as c and LinkFindings never
-	// runs for it at all — on either side. Calling LinkFindings directly
-	// cannot reproduce that quietness: the function has no "this side is
-	// archived" input, so archived-counterpart-while-checked-as-open
-	// always trips the archive-skew finding (see "archive skew" in
-	// TestLinkFindings), regardless of whether the side being checked is
-	// itself archived. The quietness is Structural's iteration boundary,
-	// not a rule LinkFindings evaluates, so this pins that boundary
-	// directly rather than staging a call that cannot exercise it.
-	t.Run("canonical archived with the part archived too (structural quietness, not a link rule)", func(t *testing.T) {
-		sat, can := linkedTrees(t,
-			map[string]string{"link.md": satLinkMD("b", "1")},
-			map[string]string{"link.md": canLinkMD("b", goodMergeOrder), "proposal.md": goodProposal, "tasks.md": oneTaskTasksFile},
-			true, true, // both archived
-		)
-		satChanges, err := sat.Changes()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(satChanges) != 0 {
-			t.Fatalf("want the archived satellite invisible to Changes(), got %v", satChanges)
-		}
-		canChanges, err := can.Changes()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(canChanges) != 0 {
-			t.Fatalf("want the archived canonical invisible to Changes(), got %v", canChanges)
-		}
-		if got := findings(t, sat); len(got) != 0 {
-			t.Errorf("sat: want no findings, got:\n%s", findingMsgs(got))
-		}
-		if got := findings(t, can); len(got) != 0 {
-			t.Errorf("can: want no findings, got:\n%s", findingMsgs(got))
-		}
-	})
-
 	t.Run("link-only satellite directory, clean round trip", func(t *testing.T) {
 		sat, can := linkedTrees(t,
 			map[string]string{"link.md": satLinkMD("b", "1")},
 			map[string]string{"link.md": canLinkMD("b", goodMergeOrder), "proposal.md": goodProposal, "tasks.md": oneTaskTasksFile},
-			false, false,
 		)
 		if got := findings(t, sat); len(got) != 0 {
 			t.Errorf("sat: want no findings, got:\n%s", findingMsgs(got))
@@ -289,8 +237,8 @@ func TestLinkFindingsCounterpartOnlyInPeerWorktree(t *testing.T) {
 	parent := t.TempDir()
 	satBase := testtree.Build(t, parent, "sat", nil, "can ../can\n")
 	canBase := testtree.Build(t, parent, "can", nil, "sat ../sat\n") // can's own changes/ stays empty
-	testtree.Change(t, satBase, "x", false, map[string]string{"link.md": satLinkMD("b", "1")})
-	testtree.Change(t, filepath.Join(canBase, ".worktrees", "x"), "x", false, map[string]string{
+	testtree.Change(t, satBase, "x", map[string]string{"link.md": satLinkMD("b", "1")})
+	testtree.Change(t, filepath.Join(canBase, ".worktrees", "x"), "x", map[string]string{
 		"link.md":     canLinkMD("b", goodMergeOrder),
 		"proposal.md": goodProposal,
 		"tasks.md":    oneTaskTasksFile,
@@ -313,8 +261,8 @@ func TestLinkFindingsCounterpartOnlyInPeerSiblingWorktree(t *testing.T) {
 	parent := t.TempDir()
 	satBase := testtree.Build(t, parent, "sat", nil, "can ../can\n")
 	canBase := testtree.Build(t, parent, "can", nil, "sat ../sat\n") // can's own changes/ stays empty
-	testtree.Change(t, satBase, "x", false, map[string]string{"link.md": satLinkMD("b", "1")})
-	testtree.Change(t, filepath.Join(canBase+"-worktrees", "x"), "x", false, map[string]string{
+	testtree.Change(t, satBase, "x", map[string]string{"link.md": satLinkMD("b", "1")})
+	testtree.Change(t, filepath.Join(canBase+"-worktrees", "x"), "x", map[string]string{
 		"link.md":     canLinkMD("b", goodMergeOrder),
 		"proposal.md": goodProposal,
 		"tasks.md":    oneTaskTasksFile,
@@ -339,7 +287,6 @@ func TestStructuralLinkPlusDesignKeepsDesignChecks(t *testing.T) {
 	sat, _ := linkedTrees(t,
 		map[string]string{"link.md": satLinkMD("b", "1"), "design.md": "nothing here\n"},
 		nil,
-		false, false,
 	)
 	got := findingMsgs(findings(t, sat))
 	for _, want := range []string{`missing "## Context"`, `missing "## Decisions"`} {
@@ -353,7 +300,7 @@ func TestStructuralLinkPlusDesignKeepsDesignChecks(t *testing.T) {
 // declared peer whose path exists but cannot be traversed is a finding,
 // not silence — the same technique
 // internal/cmd/validate_test.go's TestValidateReportsUnreadablePeer uses
-// to force PeerUnreadable for RefFindings' identical distinction.
+// to force PeerUnreadable end to end.
 func TestLinkFindingsPeerUnreadable(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores file permissions")
@@ -361,7 +308,6 @@ func TestLinkFindingsPeerUnreadable(t *testing.T) {
 	sat, can := linkedTrees(t,
 		map[string]string{"link.md": satLinkMD("b", "1")},
 		map[string]string{"link.md": canLinkMD("b", goodMergeOrder), "proposal.md": goodProposal, "tasks.md": oneTaskTasksFile},
-		false, false,
 	)
 	canBase := filepath.Dir(can.Root)
 	if err := os.Chmod(canBase, 0o000); err != nil {
@@ -384,10 +330,10 @@ func TestLinkFindingsReciprocalWithDifferentPeerNames(t *testing.T) {
 	parent := t.TempDir()
 	satBase := testtree.Build(t, parent, "sat", nil, "canonical-repo ../can\n")
 	canBase := testtree.Build(t, parent, "can", nil, "satellite-repo ../sat\n")
-	testtree.Change(t, satBase, "x", false, map[string]string{
+	testtree.Change(t, satBase, "x", map[string]string{
 		"link.md": "## Part of\n\n`canonical-repo:x`\n\n## Branch\n\nb\n\n## Tasks here\n\n1\n",
 	})
-	testtree.Change(t, canBase, "x", false, map[string]string{
+	testtree.Change(t, canBase, "x", map[string]string{
 		"link.md":     "## Parts\n\n`satellite-repo:x`\n\n## Branch\n\nb\n\n## Merge order\n\n1. `satellite-repo`\n2. `.`\n",
 		"proposal.md": goodProposal,
 		"tasks.md":    oneTaskTasksFile,
@@ -422,10 +368,10 @@ func TestLinkFindingsStaleParticipantNameIsNotReciprocal(t *testing.T) {
 	parent := t.TempDir()
 	satBase := testtree.Build(t, parent, "sat", nil, "can ../can\n")
 	canBase := testtree.Build(t, parent, "can", nil, "othersat ../sat\n")
-	testtree.Change(t, satBase, "x", false, map[string]string{
+	testtree.Change(t, satBase, "x", map[string]string{
 		"link.md": "## Part of\n\n`can:x`\n\n## Branch\n\nb\n\n## Tasks here\n\n1\n",
 	})
-	testtree.Change(t, canBase, "x", false, map[string]string{
+	testtree.Change(t, canBase, "x", map[string]string{
 		"link.md":     "## Parts\n\n`sat:x`\n\n## Branch\n\nb\n\n## Merge order\n\n1. `sat`\n2. `.`\n",
 		"proposal.md": goodProposal,
 		"tasks.md":    oneTaskTasksFile,
@@ -498,7 +444,6 @@ func TestStructuralSkipsHeadingsForSatellite(t *testing.T) {
 	sat, _ := linkedTrees(t,
 		map[string]string{"link.md": satLinkMD("b", "1")},
 		nil,
-		false, false,
 	)
 	got := findingMsgs(findings(t, sat))
 	for _, absent := range []string{"missing proposal.md", "missing tasks.md", "missing design.md"} {

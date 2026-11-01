@@ -27,26 +27,24 @@ import (
 // Refused (exit Fail, each naming the failed check) unless: the peer is
 // declared in peers and present, the canonical change exists in the peer
 // tree, the canonical change is not itself a satellite, the link does not
-// already exist on either side, and the peer's own change directory has
-// no uncommitted modifications. --force overrides the last refusal only
-// (design.md's guarded-cross-tree-write). The peer side is written first
+// already exist on either side, and the peer names this tree. The peer
+// side is written first
 // and the local side second, so a failed local write leaves the peer side
 // as the only thing landed rather than nothing at all. A malformed
 // invocation is exit Usage.
 func Link(args []string, stdout, stderr io.Writer) int {
 	fs, root := flagSet("link", stderr)
-	force := fs.Bool("force", false, "override the uncommitted-modifications refusal")
 	if err := fs.Parse(args); err != nil {
 		return Usage
 	}
 	if fs.NArg() != 1 {
-		fmt.Fprintln(stderr, "usage: spectre link [--root <path>] [--force] <peer>:<canonical-id>")
+		fmt.Fprintln(stderr, "usage: spectre link [--root <path>] <peer>:<canonical-id>")
 		return Usage
 	}
 	arg := fs.Arg(0)
 	peerName, canonicalID, ok := strings.Cut(arg, ":")
 	if !ok || peerName == "" || canonicalID == "" {
-		fmt.Fprintf(stderr, "usage: spectre link [--root <path>] [--force] <peer>:<canonical-id>; got %q\n", arg)
+		fmt.Fprintf(stderr, "usage: spectre link [--root <path>] <peer>:<canonical-id>; got %q\n", arg)
 		return Usage
 	}
 	if !isValidID(canonicalID) {
@@ -162,17 +160,6 @@ func Link(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	dirty, err := hasUncommittedModifications(canonicalDir)
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return Usage
-	}
-	if dirty && !*force {
-		fmt.Fprintf(stderr, "%s: peer's change directory has uncommitted modifications (use --force to override)\n",
-			canonicalDir)
-		return Fail
-	}
-
 	satBranch, err := currentBranch(t.Root)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -236,20 +223,6 @@ func firstSorted(names map[string]bool) string {
 	}
 	sort.Strings(keys)
 	return keys[0]
-}
-
-// hasUncommittedModifications reports whether dir, inside a git working
-// tree, carries any uncommitted change — tracked or untracked — under it.
-func hasUncommittedModifications(dir string) (bool, error) {
-	cmd := exec.Command("git", "status", "--porcelain", ".")
-	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return false, fmt.Errorf(
-			"checking %s for uncommitted modifications requires a git repository; git status failed: %w\n%s",
-			dir, err, out)
-	}
-	return len(strings.TrimSpace(string(out))) > 0, nil
 }
 
 // currentBranch reports the branch checked out in the git working tree

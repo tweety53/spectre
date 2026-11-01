@@ -16,26 +16,14 @@ type Requirement struct {
 	Num   int    // 1
 	Text  string // bullet text after the id, verbatim
 	Notes []string
-	Refs  []Ref
 	Line  int // 1-based line of the bullet
 }
 
-// Ref is a citation of a requirement. Peer is empty for a same-tree
-// reference; Capability is empty for a same-file reference.
-type Ref struct {
-	Peer       string
-	Capability string
-	ID         string
-	Raw        string // "@web:plans#R7"
-	Line       int
-}
-
-// Change is one folder under changes/ or changes/archive/.
+// Change is one folder under changes/.
 type Change struct {
-	ID       string
-	Dir      string // absolute path
-	Archived bool
-	Tasks    []Task
+	ID    string
+	Dir   string // absolute path
+	Tasks []Task
 }
 
 // Task is one "- [ ] <n>. ..." line in tasks.md.
