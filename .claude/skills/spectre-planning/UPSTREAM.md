@@ -5,6 +5,6 @@ the single source of the planning prompts flow loads, bundled so the spectre plu
 prompts mode works without flow.
 
 - Source: https://github.com/tweety53/agents/blob/main/skills/spectre-planning/SKILL.md
-- Landed: agents change kan-1073-commit-only-what-is-needed-permanently (KAN-1073), 2026-10-31
+- Landed: agents change brainstorm-ambiguity, 2026-11-07
 - Unmodified: `SKILL.md` is byte-identical to that file as of that commit. Refresh by
   re-copying `skills/spectre-planning/SKILL.md` from agents `main` and updating the two lines above.
