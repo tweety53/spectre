@@ -33,6 +33,17 @@ disk is the entire state.
 spectre checks the shape of a change; how you plan it is up to you. A filled change, by hand:
 [docs/example.md](docs/example.md).
 
+**Recommended:** plan with the tools built for it, alongside spectre —
+
+- your harness's plan mode (Claude Code's `EnterPlanMode`, Cursor's Plan mode) while you explore
+  and settle the design;
+- the [superpowers](https://github.com/obra/superpowers) `brainstorming` skill to settle the design
+  and fill `proposal.md` and `design.md`;
+- its `writing-plans` skill to write `tasks.md` — tell it spectre's task shape: column-0
+  `- [ ] <n>. <title>` tasks with `  - [ ] **Step N: …**` steps indented beneath them.
+
+spectre does not bundle them; install superpowers separately.
+
 ## Quick start
 
 spectre is driven by an AI coding agent: hand it one prompt per step and it runs the commands —
