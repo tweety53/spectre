@@ -2,7 +2,7 @@
 name: spectre
 description: Dispatch to any spectre subcommand — init, new, list, validate, link —
   show its real output, name what typically comes next, and for `new`, fill in the three files it
-  scaffolds, through the bundled brainstorming and writing-plans skills.
+  scaffolds with the user.
 allowed-tools: Bash(spectre:*), Read, Edit, Write, Skill
 license: MIT
 compatibility: Requires the spectre CLI on PATH (or built locally as `spectre`).
@@ -38,20 +38,12 @@ typically comes next, and **do not take that next step unasked**. `new` is the o
 2. Read the three files under `changes/<change-id>/`. The scaffold already carries each file's
    required headings, in order — keep them; extra headings are allowed. A capability spec's are in
    [docs/spec-format.md](https://github.com/tweety53/spectre/blob/main/docs/spec-format.md).
-3. Fill them with the `brainstorming` and `writing-plans` skills bundled beside this one
-   (`spectre:brainstorming` / `spectre:writing-plans` after a plugin install; a separately
-   installed `superpowers:` copy works the same), as
-   [docs/superpowers-example.md](https://github.com/tweety53/spectre/blob/main/docs/superpowers-example.md) shows:
-   - Invoke `brainstorming` to settle the design with the user, then write `proposal.md`,
-     `design.md` and any capability spec from the approved design — into these files, not a
-     separate design doc.
-   - Then invoke `writing-plans` to write `tasks.md` in spectre's task shape: column-0
-     `- [ ] <n>. <title>` task lines, flat integer ids, and `  - [ ] **Step N: …**` steps indented
-     two columns beneath their task. Stop once it is written — executing the plan is not part of
-     `new`.
-   - Skip the skills' own commit steps: the guardrails below still hold.
-   - If neither skill is available, fill the files with the user by hand, following
-     [docs/example.md](https://github.com/tweety53/spectre/blob/main/docs/example.md).
+3. Fill them with the user, following
+   [docs/example.md](https://github.com/tweety53/spectre/blob/main/docs/example.md):
+   `proposal.md` and `design.md` from the design the user settles, then `tasks.md` in spectre's
+   task shape — column-0 `- [ ] <n>. <title>` task lines, flat integer ids, and
+   `  - [ ] **Step N: …**` steps indented two columns beneath their task. Stop once it is
+   written — executing the plan is not part of `new`.
 4. Name `spectre validate` as the next step — do not run it.
 
 Only `new` invokes the bundled skills; every other subcommand stays dispatch-only.

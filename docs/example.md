@@ -4,8 +4,6 @@ One change, end to end, as prompts for an AI coding agent, which runs the `spect
 itself. Every body shown is real output against a built `spectre` binary in a scratch git repository. The subject — an
 email-only backend adding SMS, messenger and push — is a language-free stand-in.
 
-The recommended path fills the same change with superpowers' brainstorming and writing-plans:
-[superpowers-example.md](superpowers-example.md).
 
 ## 1. Create the tree
 
