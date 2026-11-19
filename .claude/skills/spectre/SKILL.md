@@ -44,6 +44,14 @@ typically comes next, and **do not take that next step unasked**. `new` is the o
    task shape — column-0 `- [ ] <n>. <title>` task lines, flat integer ids, and
    `  - [ ] **Step N: …**` steps indented two columns beneath their task. Stop once it is
    written — executing the plan is not part of `new`.
+   Where they are available, use them — they are recommended, never required:
+   - the harness's plan mode (Claude Code's `EnterPlanMode`, Cursor's Plan mode) while the
+     design is explored and settled;
+   - the `brainstorming` skill (superpowers) to settle the design with the user and write
+     `proposal.md` and `design.md` into these files, not a separate design doc;
+   - the `writing-plans` skill (superpowers) to write `tasks.md`, told the task shape above;
+     skip its own commit steps.
+   Without them, fill the files by hand as the example shows.
 4. Name `spectre validate` as the next step — do not run it.
 
 Only `new` invokes the bundled skills; every other subcommand stays dispatch-only.
